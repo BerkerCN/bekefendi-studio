@@ -3,87 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bekefendi Studio Pro - Auto Artwork</title>
+    <title>Bekefendi Studio Pro - Visual Experience</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://w.soundcloud.com/player/api.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.2/color-thief.umd.js"></script>
+    <!-- 3D MODU İÇİN THREE.JS KÜTÜPHANESİ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         /* --- TEMEL AYARLAR --- */
         * { box-sizing: border-box; }
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #050505;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: #050505;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        /* --- YENİ: VIGNETTE VE GRID EFEKTLERİ --- */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -7; /* Grid'in üzerinde olması için */
+            background: radial-gradient(circle at center, transparent 40%, black 100%);
+            opacity: var(--vignette-opacity, 0); /* DÜZELTME: CSS Değişkenini kullan */
+            transition: opacity 0.5s ease-out;
+            pointer-events: none;
+        }
+
+        #grid-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -9;
+            pointer-events: none;
+        }
+
+        /* --- GİRİŞ ANİMASYONU --- */
+        @keyframes fadeInSlideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* --- ARKA PLAN --- */
         #bg-layer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #120524, #2a0e45, #15082b);
-            background-size: cover;
-            background-position: center;
-            filter: blur(40px) brightness(0.5);
-            z-index: -10;
-            transition: filter 0.08s ease-out, background-image 0.5s ease; /* Resim değişimi için yumuşak geçiş */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #120524, #4a0e45, #15082b, #4a0e45);
+            background-size: 300% 300%; background-position: center;
+            filter: blur(40px) brightness(0.6); z-index: -10;
+            transition: filter 0.5s ease-out, background-image 0.5s ease;
+            animation: animatedGradient 25s ease infinite;
+        }
+        @keyframes animatedGradient {
+            0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%}
+        }
+        #bg-layer::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAUVBMVEWFhYWDg4N3d3dtbW17e3t1dXVnZ2d8fHx+fn55eXnaf39wcHBvb29oaGhora2xtLbAwMDk5OTBwcGtra2urq6goKCqqqqnp6e4uLgcLY/OAAAAnklEQVRIx+3RSRLDIAxE0QYhAbGZPNu5/z0zrXHiqiz5W72FqhqtVuuXAl3iOV7iPV/iSsAqZa9BS7YOmMXnNNX4TWGxRMn3R6SxRNgy0bzXOW8EBO8SAClsPdB3psqlvG+Lw7ONXg/pTld52BjgSSkA3PV2OOemjIDcZQWgVvONw60q7sIpR38EnHPSMDQ4MjDjLPozhAkGrVbr/z0ANjAF4AcbXmYAAAAASUVORK5CYII=');
+            opacity: 0.04; z-index: -9; pointer-events: none;
+        }
+        
+        #particle-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -5; pointer-events: none; transition: opacity 0.5s;
         }
 
         .main-container {
-            display: flex;
-            gap: 20px;
-            align-items: stretch;
-            height: 85vh;
-            width: 90vw;
-            max-width: 1400px;
+            display: flex; gap: 20px; align-items: stretch;
+            height: 85vh; width: 90vw; max-width: 1400px;
+            animation: fadeInSlideUp 0.8s ease-out forwards;
         }
 
         /* --- SOL PANEL --- */
         .visualizer-panel {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 25px;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.6);
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
+            flex: 1; background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 25px; box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+            position: relative; overflow: hidden;
+            transition: transform 0.1s ease-out;
         }
 
-        #canvas-visualizer {
-            display: block;
-            width: 100%;
-            height: 100%;
+        /* --- KONTROL İKONLARI --- */
+        .icon-controls {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            z-index: 25;
+            display: flex;
+            gap: 5px;
+        }
+        .control-btn {
+            cursor: pointer; color: rgba(255,255,255,0.4);
+            font-size: 1.1rem; transition: all 0.2s ease;
+            padding: 10px; border-radius: 50%;
+            width: 40px; height: 40px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .control-btn:hover { color: rgba(255,255,255,0.9); transform: scale(1.1); background: rgba(0,0,0,0.2); }
+
+        /* --- AYARLAR PANELİ --- */
+        #settings-panel {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            z-index: 100;
+            width: 280px;
+            color: #eee;
+            visibility: hidden;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease-out;
+        }
+        #settings-panel.visible {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .setting-item { margin-bottom: 15px; }
+        .setting-item label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #aaa; }
+        .setting-item input[type="range"] { width: 100%; }
+        .toggle-switch { display: flex; justify-content: space-between; align-items: center; }
+        /* Basit bir toggle switch stili */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #d500f9; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+
+        #canvas-visualizer, #canvas-3d {
+            position: absolute; top: 0; left: 0;
+            display: block; width: 100%; height: 100%;
+            transition: opacity 0.3s ease-in-out;
         }
 
         /* --- ŞARKI BİLGİSİ --- */
         .info-wrapper {
-            position: absolute;
-            top: 72%;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            z-index: 15;
-            pointer-events: none;
-            padding: 0 20px;
+            position: absolute; top: 50%; left: 50%; width: 80%;
+            transform: translate(-50%, -50%); text-align: center;
+            z-index: 15; pointer-events: none;
         }
         .track-title {
-            font-size: 1.6rem; font-weight: 800; color: #fff; margin: 0;
-            text-shadow: 0 0 10px rgba(213, 0, 249, 0.5);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-size: 2.5rem; font-weight: 800; color: #fff; margin: 0;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(213, 0, 249, 0.5);
+            white-space: nowrap; overflow: hidden;
+            transition: text-shadow 0.1s ease-out;
         }
+        .track-title.scrolling > span {
+            display: inline-block; padding-left: 100%;
+            animation: marquee 15s linear infinite;
+        }
+        @keyframes marquee {
+            0%   { transform: translateX(0); } 100% { transform: translateX(-100%); }
+        }
+        .track-title > span { display: inline-block; }
         .track-artist {
-            font-size: 0.9rem; font-weight: 400; color: #ccc; margin-top: 5px;
+            font-size: 1rem; font-weight: 400; color: rgba(255,255,255,0.7); margin-top: 10px;
             letter-spacing: 2px; text-transform: uppercase;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            transition: text-shadow 0.1s ease-out;
         }
 
         /* --- KONTROLLER --- */
@@ -92,8 +177,7 @@
             text-align: center; z-index: 20; pointer-events: none;
         }
         .live-btn {
-            pointer-events: auto; 
-            background: linear-gradient(90deg, #7b1fa2 0%, #4a148c 100%);
+            pointer-events: auto; background: linear-gradient(90deg, #7b1fa2 0%, #4a148c 100%);
             color: white; border: none; padding: 12px 30px; border-radius: 50px;
             font-weight: 600; font-size: 0.9rem; cursor: pointer;
             box-shadow: 0 0 20px rgba(123, 31, 162, 0.4);
@@ -114,19 +198,83 @@
         }
         #sc-frame { width: 100%; height: 100%; border: none; }
         #file-upload { display: none; }
+
+        /* --- MOBİL UYUMLULUK --- */
+        @media (max-width: 768px) {
+            body, html { overflow: auto; align-items: flex-start; }
+            .main-container { flex-direction: column; height: auto; width: 100%; padding: 15px; gap: 15px; }
+            .visualizer-panel { flex: 0 0 300px; cursor: default; }
+            .sc-panel { flex: 1; min-height: 400px; }
+            .info-wrapper { top: 65%; }
+            .track-title { font-size: 1.5rem; }
+            .track-artist { font-size: 0.8rem; }
+            .controls-wrapper, #settings-panel { display: none; } /* Ayarları mobilde gizle */
+        }
+
+        /* --- YÜKLEME EKRANI --- */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #050505; z-index: 9999; display: flex;
+            justify-content: center; align-items: center;
+            transition: opacity 0.7s ease, visibility 0.7s ease;
+            opacity: 1; visibility: visible;
+        }
+        #loader.hidden { opacity: 0; visibility: hidden; }
+        .spinner {
+            width: 60px; height: 60px; border: 5px solid rgba(255, 255, 255, 0.2);
+            border-top-color: #d500f9; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
+    <div id="loader"><div class="spinner"></div></div>
+    <canvas id="grid-canvas"></canvas>
+    <canvas id="particle-canvas"></canvas>
     <div id="bg-layer"></div>
 
     <div class="main-container">
-        <div class="visualizer-panel" id="viz-panel" onclick="triggerUpload(event)">
+
+        <div class="visualizer-panel" id="viz-panel">
             <canvas id="canvas-visualizer"></canvas>
-            <input type="file" id="file-upload" accept="image/*">
+            <canvas id="canvas-3d"></canvas>
+
+            <div class="icon-controls">
+                <div id="settings-btn" class="control-btn" title="Ayarlar">
+                    <i class="fa-solid fa-gear"></i>
+                </div>
+                <div id="artist-switcher" class="control-btn" title="Sanatçıyı Değiştir">
+                    <i class="fa-solid fa-right-left"></i>
+                </div>
+                <div id="style-switcher" class="control-btn" title="Görselleştirici Stilini Değiştir">
+                    <i class="fa-solid fa-circle-notch"></i>
+                </div>
+            </div>
+
+            <div id="settings-panel">
+                <div class="setting-item">
+                    <label for="effect-intensity">Efekt Yoğunluğu</label>
+                    <input type="range" id="effect-intensity" min="0" max="2" value="1" step="0.1">
+                </div>
+                <div class="setting-item">
+                    <label for="bg-blur">Arka Plan Bulanıklığı</label>
+                    <input type="range" id="bg-blur" min="0" max="80" value="40" step="1">
+                </div>
+                <div class="setting-item">
+                    <div class="toggle-switch">
+                        <label for="particle-toggle">Parçacık Efekti</label>
+                        <label class="switch">
+                            <input type="checkbox" id="particle-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
             
             <div class="info-wrapper">
-                <h2 class="track-title" id="track-title">BEKEFENDI STUDIO</h2>
+                <h2 class="track-title" id="track-title"><span>BEKEFENDI STUDIO</span></h2>
                 <p class="track-artist" id="track-artist">Ready to play</p>
             </div>
 
@@ -149,123 +297,223 @@
     </div>
 
     <script>
-        const fileUpload = document.getElementById('file-upload');
+        // --- DOM ELEMENTLERİ ---
+        const loader = document.getElementById('loader');
         const canvas = document.getElementById('canvas-visualizer');
         const ctx = canvas.getContext('2d');
+        const canvas3D = document.getElementById('canvas-3d');
+        const gridCanvas = document.getElementById('grid-canvas');
+        const gCtx = gridCanvas.getContext('2d');
+        const particleCanvas = document.getElementById('particle-canvas');
+        const pCtx = particleCanvas.getContext('2d');
         const startBtn = document.getElementById('start-capture-btn');
         const bgLayer = document.getElementById('bg-layer');
         const vizPanel = document.getElementById('viz-panel');
         const titleEl = document.getElementById('track-title');
+        const styleSwitcher = document.getElementById('style-switcher');
+        const artistSwitcher = document.getElementById('artist-switcher');
         const artistEl = document.getElementById('track-artist');
-
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+        const effectIntensitySlider = document.getElementById('effect-intensity');
+        const bgBlurSlider = document.getElementById('bg-blur');
+        const particleToggle = document.getElementById('particle-toggle');
+ 
+        // --- GLOBAL DEĞİŞKENLER ---
         let audioContext, analyser, isRunning = false;
+        let currentPalette = [[213, 0, 249], [0, 229, 255]];
+        let targetPalette = [[213, 0, 249], [0, 229, 255]];
         let rotationAngle = 0;
+        let trackChangeInterval;
+
+        // --- AYARLAR (KULLANICI KONTROLLERİ) ---
+        let settings = {
+            effectIntensity: 1,
+            backgroundBlur: 40,
+            useParticles: true,
+        };
+
+        // --- SANATÇI VE STİL YÖNETİMİ ---
+        const artists = [
+            { name: 'Bekefendi', url: 'https://soundcloud.com/bekefendi' },
+            { name: 'yxng_anxty', url: 'https://soundcloud.com/yxng_anxty' }
+        ];
+        let currentArtistIndex = 0;
+        const visualizerStyles = [
+            { name: 'circle', icon: 'fa-solid fa-circle-notch' },
+            { name: 'line', icon: 'fa-solid fa-bars-staggered' },
+            { name: 'mirror', icon: 'fa-solid fa-water' },
+            { name: 'pulse', icon: 'fa-solid fa-bullseye' },
+            { name: '3d-sphere', icon: 'fa-solid fa-globe' } // YENİ 3D MODU
+        ];
+        let currentStyleIndex = 0;
         
-        // --- İŞTE ÇÖZÜM: BASE64 VARSAYILAN RESİM ---
-        // Bu resim kodun içinde gömülü olduğu için anında yüklenir. Bekleme yok.
-        const defaultImageBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="; // Siyah bir piksel
-        
+        // --- RESİM YÖNETİMİ ---
+        const defaultImageBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
         let recordImg = new Image();
-        recordImg.crossOrigin = "anonymous"; // SoundCloud'dan gelen resimler için gerekli
-        // Başlangıçta hemen hazır olması için base64 kullanıyoruz
+        recordImg.crossOrigin = "anonymous";
         recordImg.src = defaultImageBase64; 
-        
-        // İlk açılışta görseli çiz
-        recordImg.onload = () => { if(!isRunning) drawStatic(); };
+        recordImg.onload = () => {
+            try {
+                const colorThief = new ColorThief();
+                targetPalette = colorThief.getPalette(recordImg, 2);
+            } catch (e) {
+                targetPalette = [[213, 0, 249], [0, 229, 255]];
+            }
+            if(!isRunning) drawStatic();
+        };
 
-        // --- SOUNDCLOUD API & KAPAK ÇEKME ---
+        // --- SOUNDCLOUD WIDGET ---
         var iframeElement = document.querySelector('#sc-frame');
-        var widget = SC.Widget(iframeElement);
-
-        widget.bind(SC.Widget.Events.READY, function() {
-            widget.bind(SC.Widget.Events.PLAY, updateTrackInfo);
-            widget.bind(SC.Widget.Events.FINISH, () => setTimeout(updateTrackInfo, 1000));
-        });
+        var widget;
+        function initializeWidget() {
+            widget = SC.Widget(iframeElement);
+            widget.bind(SC.Widget.Events.READY, function() {
+                loader.classList.add('hidden');
+                if (isRunning) startTrackChangeInterval();
+                widget.unbind(SC.Widget.Events.PLAY);
+                widget.unbind(SC.Widget.Events.FINISH);
+                widget.bind(SC.Widget.Events.PLAY, updateTrackInfo);
+                widget.bind(SC.Widget.Events.FINISH, () => setTimeout(updateTrackInfo, 1000));
+            });
+        }
 
         function updateTrackInfo() {
             widget.getCurrentSound(function(sound) {
-                if (sound) {
-                    titleEl.innerText = sound.title;
-                    artistEl.innerText = sound.user.username;
-                    
-                    // --- KAPAK RESMİ ENTEGRASYONU ---
-                    if(sound.artwork_url) {
-                        // SoundCloud küçük resim veriyor, onu yüksek çözünürlüklü yapıyoruz
-                        const highResUrl = sound.artwork_url.replace('-large', '-t500x500');
-                        
-                        // Plağın göbeğindeki resmi güncelle
-                        recordImg.src = highResUrl;
-                        
-                        // Arka planı da güncelle (isteğe bağlı, çok şık durur)
-                        bgLayer.style.backgroundImage = `url('${highResUrl}')`;
-                    } else {
-                        // Kapak yoksa varsayılanı kullan
-                        recordImg.src = defaultImageBase64;
-                    }
+                if (!sound) return;
+                const titleSpan = titleEl.querySelector('span');
+                titleSpan.innerText = sound.title;
+                artistEl.innerText = sound.user.username;
+                titleEl.classList.toggle('scrolling', titleSpan.offsetWidth > titleEl.offsetWidth);
+                
+                if(sound.artwork_url) {
+                    const highResUrl = sound.artwork_url.replace('-large', '-t500x500');
+                    bgLayer.style.backgroundImage = `url('${highResUrl}')`;
+                    recordImg.src = highResUrl;
+                } else {
+                    recordImg.src = defaultImageBase64;
+                    targetPalette = [[213, 0, 249], [0, 229, 255]];
                 }
             });
         }
 
-        // --- BOYUTLANDIRMA ---
+        // --- KONTROL EVENTLERİ ---
         function resizeCanvas() {
-            canvas.width = vizPanel.offsetWidth;
-            canvas.height = vizPanel.offsetHeight;
+            const w = vizPanel.offsetWidth;
+            const h = vizPanel.offsetHeight;
+            canvas.width = w; canvas.height = h;
+            canvas3D.width = w; canvas3D.height = h;
+            gridCanvas.width = window.innerWidth;
+            gridCanvas.height = window.innerHeight;
+            particleCanvas.width = window.innerWidth;
+            particleCanvas.height = window.innerHeight;
+            if (three.renderer) three.renderer.setSize(w, h);
+            if (three.camera) { three.camera.aspect = w / h; three.camera.updateProjectionMatrix(); }
             if(!isRunning) drawStatic();
         }
         window.addEventListener('resize', resizeCanvas);
         setTimeout(resizeCanvas, 100);
 
-        // --- MANUEL RESİM YÜKLEME (Hala çalışıyor) ---
-        function triggerUpload(event) {
-            if(event.target.closest('.live-btn')) return;
-            fileUpload.click();
+        artistSwitcher.onclick = function(event) {
+            event.stopPropagation();
+            currentArtistIndex = (currentArtistIndex + 1) % artists.length;
+            const newArtist = artists[currentArtistIndex];
+            loader.classList.remove('hidden');
+            const baseUrl = "https://w.soundcloud.com/player/?url=";
+            const params = "&color=%237b1fa2&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=false";
+            iframeElement.src = baseUrl + newArtist.url + params;
+            iframeElement.onload = initializeWidget;
+            if (isRunning && trackChangeInterval) {
+                clearInterval(trackChangeInterval);
+                trackChangeInterval = null;
+            }
         }
-        fileUpload.onchange = function() {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    recordImg.src = e.target.result;
-                    bgLayer.style.backgroundImage = `url('${e.target.result}')`;
+
+        styleSwitcher.onclick = function(event) {
+            event.stopPropagation();
+            canvas.style.opacity = '0';
+            canvas3D.style.opacity = '0';
+            setTimeout(() => {
+                currentStyleIndex = (currentStyleIndex + 1) % visualizerStyles.length;
+                const newStyle = visualizerStyles[currentStyleIndex];
+                styleSwitcher.querySelector('i').className = newStyle.icon;
+                if (newStyle.name === '3d-sphere') {
+                    canvas.style.display = 'none';
+                    canvas3D.style.display = 'block';
+                    if (!three.initialized) three.init();
+                } else {
+                    canvas.style.display = 'block';
+                    canvas3D.style.display = 'none';
                 }
-                reader.readAsDataURL(file);
+                if(!isRunning) drawStatic();
+                canvas.style.opacity = '1';
+                canvas3D.style.opacity = '1';
+            }, 300);
+        }
+
+        settingsBtn.onclick = (e) => {
+            e.stopPropagation();
+            settingsPanel.classList.toggle('visible');
+        };
+        document.onclick = (e) => {
+            if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
+                settingsPanel.classList.remove('visible');
             }
         };
+        effectIntensitySlider.oninput = (e) => settings.effectIntensity = parseFloat(e.target.value);
+        bgBlurSlider.oninput = (e) => {
+            settings.backgroundBlur = parseFloat(e.target.value);
+            if (!isRunning) bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(0.6) hue-rotate(${hueShiftAngle}deg)`;
+        };
+        particleToggle.onchange = (e) => {
+            settings.useParticles = e.target.checked;
+            particleCanvas.style.opacity = settings.useParticles ? '1' : '0';
+        };
 
-        // --- SİSTEMİ BAŞLAT ---
+        // --- SİSTEM BAŞLATMA / DURDURMA ---
         startBtn.onclick = async function() {
             if (isRunning) return;
             try {
                 const stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true, 
-                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
+                    video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
                     selfBrowserSurface: "include", systemAudio: "include" 
                 });
-
                 if (stream.getAudioTracks().length === 0) {
                     stream.getTracks().forEach(track => track.stop());
                     alert("HATA: 'Sesi Paylaş' kutucuğunu işaretlemedin!");
                     return;
                 }
-
                 startBtn.innerHTML = '<i class="fa-solid fa-waveform"></i> SİSTEM AKTİF';
                 startBtn.style.background = "#222"; 
                 isRunning = true;
-                stream.getTracks()[0].onended = () => { stopSystem(); };
+                stream.getTracks()[0].onended = () => stopSystem();
                 resizeCanvas();
                 setupAudioAnalysis(stream);
-
             } catch (err) { if (err.name !== 'NotAllowedError') alert("Hata: " + err.message); }
         };
 
-        function stopSystem() {
+        function stopSystem(silent = false) {
+            if (trackChangeInterval) { clearInterval(trackChangeInterval); trackChangeInterval = null; }
             isRunning = false;
-            startBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> SİSTEMİ BAŞLAT';
-            startBtn.style.background = "linear-gradient(90deg, #7b1fa2 0%, #4a148c 100%)";
-            bgLayer.style.filter = 'blur(40px) brightness(0.5)';
+            if (!silent) {
+                startBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> SİSTEMİ BAŞLAT';
+                startBtn.style.background = "linear-gradient(90deg, #7b1fa2 0%, #4a148c 100%)";
+                bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(0.6)`;
+                document.body.style.setProperty('--vignette-opacity', '0'); // Vignette'i kapat
+                titleEl.style.textShadow = ''; artistEl.style.textShadow = '';
+            }
             if(audioContext) audioContext.close();
             drawStatic();
         }
+
+        // --- SES ANALİZİ VE EFEKTLER ---
+        let lastBeatTime = 0, beatIntervals = [], currentBPM = 120, smoothedBPM = 120, beatIntensity = 0;
+        const PALETTES = {
+            ENERGETIC: [[255, 0, 80], [255, 100, 0]], // Kırmızı/Turuncu
+            DARK: [[130, 0, 255], [20, 20, 40]], // Mor/Koyu Mavi
+            CHILL: [[0, 255, 150], [0, 150, 255]], // Turkuaz/Mavi
+            ATMOSPHERIC: [[220, 220, 255], [150, 180, 255]] // Açık Pastel
+        };
 
         function setupAudioAnalysis(stream) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -277,75 +525,397 @@
             analyser.smoothingTimeConstant = 0.8;
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
+            let lastPlayedSoundId = null, lowPass = 0;
 
             function animate() {
                 if (!isRunning) return;
                 requestAnimationFrame(animate);
                 analyser.getByteFrequencyData(dataArray);
                 
-                let bassSum = 0;
-                let bassRange = Math.floor(bufferLength * 0.3); 
-                for (let i = 0; i < bassRange; i++) { bassSum += dataArray[i]; }
-                let bassAvg = bassSum / bassRange; 
-                
-                let brightness = 0.5 + (bassAvg / 255) * 1.5;
-                let hueRotate = (bassAvg / 1.5);
-                bgLayer.style.filter = `blur(40px) brightness(${brightness}) hue-rotate(${hueRotate}deg)`;
+                let bassSum = 0, trebleSum = 0;
+                const bassRange = Math.floor(bufferLength * 0.2);
+                const trebleRange = Math.floor(bufferLength * 0.4);
+                for (let i = 0; i < bassRange; i++) bassSum += dataArray[i];
+                for (let i = bufferLength - trebleRange; i < bufferLength; i++) trebleSum += dataArray[i];
+                let bassAvg = bassSum / bassRange;
+                let trebleAvg = trebleSum / trebleRange;
 
-                drawFrame(dataArray, true);
+                // --- DUYGUSAL RENK PALETİ (DEVRE DIŞI) ---
+                // İsteğiniz üzerine, renklerin sadece kapak resminden alınması için
+                // müziğin enerjisine göre renk paletini değiştiren bu bölümü devre dışı bırakıyoruz.
+                // if (bassAvg > 140 && trebleAvg > 80) targetPalette = PALETTES.ENERGETIC;
+                // else if (bassAvg > 130 && trebleAvg < 60) targetPalette = PALETTES.DARK;
+                // else if (bassAvg < 100 && trebleAvg > 70) targetPalette = PALETTES.CHILL;
+                // else if (bassAvg < 80 && trebleAvg < 50) targetPalette = PALETTES.ATMOSPHERIC;
+
+                // Renkleri yumuşakça hedefe doğru ilerlet
+                for(let i=0; i<2; i++) for(let j=0; j<3; j++) currentPalette[i][j] += (targetPalette[i][j] - currentPalette[i][j]) * 0.02;
+
+                // --- BPM & VURUŞ ENERJİSİ ---
+                beatIntensity *= 0.92;
+                smoothedBPM += (currentBPM - smoothedBPM) * 0.05;
+                lowPass = lowPass * 0.9 + 0.1 * bassAvg;
+                if (bassAvg > lowPass + 35 && Date.now() - lastBeatTime > 250) { // 240 BPM limit
+                    const now = Date.now();
+                    if (lastBeatTime > 0) {
+                        const interval = now - lastBeatTime;
+                        beatIntervals.push(interval);
+                        if (beatIntervals.length > 10) beatIntervals.shift();
+                        const avgInterval = beatIntervals.reduce((a, b) => a + b) / beatIntervals.length;
+                        currentBPM = 60000 / avgInterval;
+                    }
+                    lastBeatTime = now;
+                    beatIntensity = 1;
+                    if (visualizerStyles[currentStyleIndex].name === 'pulse') createShockwave(bassAvg);
+                }
+                
+                // --- VURUŞ ENERJİSİNE DAYALI EFEKTLER (AYARLANABİLİR) ---
+                const intensity = settings.effectIntensity;
+                const panelScale = 1 + (beatIntensity * 0.015 * intensity);
+                vizPanel.style.transform = `scale(${panelScale})`;
+                let brightness = 0.6 + (bassAvg / 255) * 1.4 + (beatIntensity * 0.15 * intensity);
+
+                // 3. Dinamik Vignette Parlaması
+                document.body.style.setProperty('--vignette-opacity', String(beatIntensity * 0.6 * intensity));
+
+                let hueRotate = (bassAvg / 1.5);
+                bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(${brightness}) hue-rotate(${hueRotate}deg)`;
+                const textGlow = (bassAvg / 255) * 25;
+                titleEl.style.textShadow = `0 0 ${10 + textGlow}px rgba(255, 255, 255, 0.7), 0 0 ${20 + textGlow * 1.5}px rgba(213, 0, 249, 0.5)`;
+                artistEl.style.textShadow = `0 0 ${2 + textGlow * 0.2}px rgba(255, 255, 255, 0.5)`;
+
+                drawFrame(dataArray, true, beatIntensity * intensity);
+                drawGrid(beatIntensity * intensity);
+                if (three.initialized) three.update(dataArray, beatIntensity * intensity);
             }
+            startTrackChangeInterval();
             animate();
         }
 
-        function drawFrame(dataArray, isAnimating) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radius = 160;
+        function startTrackChangeInterval() {
+            if (trackChangeInterval) clearInterval(trackChangeInterval);
+            let lastPlayedSoundId = null;
+            trackChangeInterval = setInterval(() => {
+                if (!isRunning || !widget) return;
+                widget.getCurrentSound((currentSound) => {
+                    if (currentSound && currentSound.id !== lastPlayedSoundId) {
+                        lastPlayedSoundId = currentSound.id;
+                        updateTrackInfo();
+                    }
+                });
+            }, 1000);
+        }
 
-            // Visualizer
+        // --- 2D ÇİZİM FONKSİYONLARI ---
+        function drawFrame(dataArray, isAnimating, beatIntensity = 0) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const style = visualizerStyles[currentStyleIndex].name;
+            if (style === '3d-sphere') return; // 3D modunda 2D çizim yapma
+            titleEl.style.opacity = artistEl.style.opacity = (style === 'circle' || style === 'pulse') ? '1' : '0';
+            if (style === 'circle') drawCircleVisualizer(dataArray, beatIntensity);
+            else if (style === 'line') drawLineVisualizer(dataArray, beatIntensity);
+            else if (style === 'mirror') drawMirrorVisualizer(dataArray, beatIntensity);
+            else if (style === 'pulse') drawPulseVisualizer(dataArray, beatIntensity); 
+            if (style === 'circle') drawRecordPlayer(isAnimating);
+        }
+        function drawCircleVisualizer(dataArray, beatIntensity) {
+            const centerX = canvas.width / 2, centerY = canvas.height / 2, radius = 160;
+            if (!dataArray) return;
+            for (let i = 0; i < dataArray.length; i++) {
+                const value = dataArray[i]; if (value < 10) continue;
+                const beatMultiplier = 1 + (beatIntensity * 0.25);
+                const barHeight = (value * 0.9 * beatMultiplier) + 5 ;
+                const angle = (i * 2 * Math.PI) / dataArray.length;
+                const xStart = centerX + Math.cos(angle) * radius, yStart = centerY + Math.sin(angle) * radius;
+                const xEnd = centerX + Math.cos(angle) * (radius + barHeight), yEnd = centerY + Math.sin(angle) * (radius + barHeight);
+                const color = getColorFromPalette(value);
+                ctx.beginPath(); ctx.moveTo(xStart, yStart); ctx.lineTo(xEnd, yEnd);
+                ctx.shadowColor = color; ctx.shadowBlur = 15;
+                ctx.strokeStyle = color; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+            }
+        }
+        function drawFadedArtwork() {
+            if (recordImg.complete && recordImg.naturalWidth > 0) {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const h = canvas.height;
+                const w = (h / recordImg.height) * recordImg.width;
+                ctx.save();
+                ctx.globalAlpha = 0.1; // Soluk bir görünüm için
+                ctx.drawImage(recordImg, centerX - w / 2, centerY - h / 2, w, h);
+                ctx.restore();
+            }
+        }
+        function drawLineVisualizer(dataArray, beatIntensity) {
+            if (!dataArray) return;
+            const bufferLength = dataArray.length;
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let x = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                const value = dataArray[i];
+                const beatMultiplier = 1 + (beatIntensity * 0.3);
+                const barHeight = (value / 255) * (canvas.height * 0.7) * beatMultiplier;
+                const color = getColorFromPalette(value);
+                ctx.fillStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+                ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                x += barWidth + 1;
+            }
+            drawFadedArtwork();
+        }
+        function drawMirrorVisualizer(dataArray, beatIntensity) {
+            if (!dataArray) return;
+            const bufferLength = dataArray.length;
+            const barWidth = canvas.width / bufferLength;
+            const centerY = canvas.height / 2;
+            let x = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                const value = dataArray[i];
+                const beatMultiplier = 1 + (beatIntensity * 0.3);
+                const barHeight = (value / 255) * (canvas.height * 0.4) * beatMultiplier;
+                const color = getColorFromPalette(value);
+                ctx.fillStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+                ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
+                ctx.fillRect(x, centerY, barWidth, barHeight);
+                x += barWidth;
+            }
+            drawFadedArtwork();
+        }
+        function drawPulseVisualizer(dataArray, beatIntensity) {
+            const centerX = canvas.width / 2, centerY = canvas.height / 2;
+            let bassAvg = 0;
             if (dataArray) {
-                const bufferLength = dataArray.length;
-                for (let i = 0; i < bufferLength; i++) {
-                    const value = dataArray[i];
-                    if (value < 10) continue; 
-                    const barHeight = (value * 0.9) + 5;
-                    const angle = (i * 2 * Math.PI) / bufferLength;
-                    const xStart = centerX + Math.cos(angle) * radius;
-                    const yStart = centerY + Math.sin(angle) * radius;
-                    const xEnd = centerX + Math.cos(angle) * (radius + barHeight);
-                    const yEnd = centerY + Math.sin(angle) * (radius + barHeight);
-                    const gradient = ctx.createLinearGradient(xStart, yStart, xEnd, yEnd);
-                    gradient.addColorStop(0, '#d500f9'); gradient.addColorStop(1, '#00e5ff');
-                    ctx.beginPath(); ctx.moveTo(xStart, yStart); ctx.lineTo(xEnd, yEnd);
-                    ctx.strokeStyle = gradient; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+                let bassSum = 0;
+                for (let i = 0; i < dataArray.length * 0.3; i++) { bassSum += dataArray[i]; }
+                bassAvg = bassSum / (dataArray.length * 0.3);
+                const beatMultiplier = 1 + (beatIntensity * 0.25);
+                pulseRadius = 50 + (bassAvg / 255) * 100 * beatMultiplier;
+            }
+            ctx.save();
+            ctx.beginPath(); 
+            ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2); 
+            ctx.clip();
+            ctx.shadowColor = getColorFromPalette(bassAvg);
+            ctx.shadowBlur = 25;
+            ctx.fillStyle = getColorFromPalette(bassAvg);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (recordImg.complete && recordImg.naturalWidth > 0) {
+                ctx.drawImage(recordImg, centerX - pulseRadius, centerY - pulseRadius, pulseRadius * 2, pulseRadius * 2);
+            }
+            ctx.restore();
+            updateAndDrawShockwaves();
+        }
+        function getColorFromPalette(value) {
+            const ratio = value / 255;
+            const r = Math.round(currentPalette[0][0] * (1 - ratio) + currentPalette[1][0] * ratio);
+            const g = Math.round(currentPalette[0][1] * (1 - ratio) + currentPalette[1][1] * ratio);
+            const b = Math.round(currentPalette[0][2] * (1 - ratio) + currentPalette[1][2] * ratio);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+        let shockwaves = [];
+        function createShockwave(value) {
+            if (shockwaves.length > 5) return;
+            shockwaves.push({ x: canvas.width / 2, y: canvas.height / 2, radius: 30, opacity: 1, color: getColorFromPalette(value) });
+        }
+        function updateAndDrawShockwaves() {
+            for (let i = shockwaves.length - 1; i >= 0; i--) {
+                const wave = shockwaves[i];
+                wave.radius += 3;
+                wave.opacity -= 0.01;
+                if (wave.opacity <= 0) {
+                    shockwaves.splice(i, 1);
+                } else {
+                    ctx.strokeStyle = wave.color.replace('rgb', 'rgba').replace(')', `, ${wave.opacity})`);
+                    ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2); ctx.stroke();
                 }
             }
-
-            // Plak ve Resim
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            if (isAnimating) rotationAngle += 0.01;
+        }
+        function drawRecordPlayer(isAnimating) {
+            const centerX = canvas.width / 2, centerY = canvas.height / 2;
+            ctx.save(); ctx.translate(centerX, centerY);
+            if (isAnimating) rotationAngle += (smoothedBPM / 120) * 0.01;
             ctx.rotate(rotationAngle);
-
-            // Resmi maskele ve çiz
             ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
-            
-            // GÜVENLİK KONTROLÜ: Resim yüklü değilse çizme, yüklüyse çiz.
-            if (recordImg.complete && recordImg.naturalWidth > 0) {
-                 ctx.drawImage(recordImg, -150, -150, 300, 300);
-            } else {
-                 // Resim yoksa siyah dolgu yap
-                 ctx.fillStyle = "#000"; ctx.fill();
-            }
-           
-            // Plak detayları
+            if (recordImg.complete && recordImg.naturalWidth > 0) ctx.drawImage(recordImg, -150, -150, 300, 300);
+            else { ctx.fillStyle = "#000"; ctx.fill(); }
             ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI * 2); ctx.lineWidth = 15; ctx.strokeStyle = "#111"; ctx.stroke();
             ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fillStyle = "#000"; ctx.fill();
             ctx.restore();
         }
-
         function drawStatic() { drawFrame(null, false); }
+
+        // --- 3D YÖNETİMİ (THREE.JS) ---
+        const three = {
+            initialized: false,
+            scene: null, camera: null, renderer: null, sphere: null,
+            init: function() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, canvas3D.width / canvas3D.height, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ canvas: canvas3D, alpha: true });
+                this.renderer.setSize(canvas3D.width, canvas3D.height);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+
+                const geometry = new THREE.IcosahedronGeometry(2, 64);
+                geometry.setAttribute('basePosition', new THREE.BufferAttribute(geometry.attributes.position.array.slice(), 3));
+                const material = new THREE.MeshStandardMaterial({ color: 0xffffff, wireframe: true });
+                this.sphere = new THREE.Mesh(geometry, material);
+                this.scene.add(this.sphere);
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+                this.scene.add(ambientLight);
+                const pointLight = new THREE.PointLight(0xffffff, 0.8);
+                pointLight.position.set(5, 5, 5);
+                this.scene.add(pointLight);
+
+                this.camera.position.z = 5;
+                this.initialized = true;
+            },
+            update: function(dataArray, beatIntensity) {
+                if (!this.initialized || !dataArray) return;
+                this.sphere.rotation.x += 0.001; this.sphere.rotation.y += 0.002;
+
+                const positions = this.sphere.geometry.attributes.position;
+                const basePositions = this.sphere.geometry.attributes.basePosition;
+                const bassAvg = dataArray.slice(0, 32).reduce((a, b) => a + b) / 32;
+                
+                for (let i = 0; i < positions.count; i++) {
+                    const base_x = basePositions.getX(i);
+                    const base_y = basePositions.getY(i);
+                    const base_z = basePositions.getZ(i);
+                    const offset = (dataArray[i % dataArray.length] / 255) * 0.3 * (1 + beatIntensity);
+                    const final_x = base_x + (base_x * offset);
+                    const final_y = base_y + (base_y * offset);
+                    const final_z = base_z + (base_z * offset);
+                    positions.setXYZ(i, final_x, final_y, final_z);
+                }
+                positions.needsUpdate = true;
+                this.sphere.geometry.computeVertexNormals();
+
+                const color = new THREE.Color(getColorFromPalette(bassAvg));
+                this.sphere.material.color.lerp(color, 0.1);
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        };
+
+        // Vignette opaklığını kontrol etmek için CSS değişkeni kullanalım
+        document.body.style.setProperty('--vignette-opacity', '0');
+
+
+        // --- YENİ: ARKA PLAN GRID ÇİZİMİ ---
+        function drawGrid(beatIntensity) {
+            gCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+            const step = 50;
+            const centerX = gridCanvas.width / 2;
+            const horizonY = gridCanvas.height * 0.4;
+            const beatGlow = beatIntensity * 200;
+
+            // Grid rengini ana paletten al
+            const gridColor = `rgb(${currentPalette[0][0]}, ${currentPalette[0][1]}, ${currentPalette[0][2]})`;
+
+            gCtx.strokeStyle = `rgba(${currentPalette[0].join(',')}, 0.2)`;
+            gCtx.shadowColor = gridColor;
+            gCtx.shadowBlur = beatGlow;
+
+            // Yatay çizgiler
+            for (let i = 0; i < 20; i++) {
+                const y = horizonY + i * i;
+                if (y > gridCanvas.height) break;
+                gCtx.beginPath();
+                gCtx.moveTo(0, y);
+                gCtx.lineTo(gridCanvas.width, y);
+                gCtx.stroke();
+            }
+
+            // Dikey (perspektif) çizgiler
+            for (let i = -20; i <= 20; i++) {
+                if (i === 0) continue;
+                const x = centerX + i * step;
+                gCtx.beginPath();
+                gCtx.moveTo(centerX, horizonY);
+                gCtx.lineTo(x, gridCanvas.height);
+                gCtx.stroke();
+            }
+            gCtx.shadowBlur = 0; // Sonraki çizimleri etkilememesi için sıfırla
+        }
+
+
+        // --- ARKA PLAN PARÇACIK ANİMASYONU ---
+        let particlesArray, hueShiftAngle = 0;
+        class Particle {
+            constructor() {
+                this.x = Math.random() * particleCanvas.width;
+                this.y = Math.random() * particleCanvas.height;
+                this.size = Math.random() * 1.5 + 1;
+                this.speedX = (Math.random() * 0.4) - 0.2;
+                this.speedY = (Math.random() * 0.4) - 0.2;
+            }
+            update() {
+                if (this.x > particleCanvas.width || this.x < 0) { this.speedX = -this.speedX; }
+                if (this.y > particleCanvas.height || this.y < 0) { this.speedY = -this.speedY; }
+                const speedMultiplier = isRunning ? (smoothedBPM / 120) : 1;
+                this.x += this.speedX * speedMultiplier;
+                this.y += this.speedY * speedMultiplier;
+            }
+            draw() {
+                pCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                pCtx.beginPath();
+                pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                pCtx.fill();
+            }
+        }
+        function initParticles() {
+            particlesArray = [];
+            let numberOfParticles = (particleCanvas.height * particleCanvas.width) / 9000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particlesArray.push(new Particle());
+            }
+        }
+        function connectParticles() {
+            let opacityValue = 1;
+            for (let a = 0; a < particlesArray.length; a++) {
+                for (let b = a; b < particlesArray.length; b++) {
+                    let distance = ((particlesArray[a].x - particlesArray[b].x) * (particlesArray[a].x - particlesArray[b].x))
+                               + ((particlesArray[a].y - particlesArray[b].y) * (particlesArray[a].y - particlesArray[b].y));
+                    if (distance < (particleCanvas.width/7) * (particleCanvas.height/7)) {
+                        opacityValue = 1 - (distance/20000);
+                        pCtx.strokeStyle = `rgba(213, 0, 249, ${opacityValue * 0.5})`;
+                        pCtx.lineWidth = 1;
+                        pCtx.beginPath();
+                        pCtx.moveTo(particlesArray[a].x, particlesArray[a].y);
+                        pCtx.lineTo(particlesArray[b].x, particlesArray[b].y);
+                        pCtx.stroke();
+                    }
+                }
+            }
+        }
+        function animateParticles() {
+            if (!settings.useParticles) { pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height); return; }
+            pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            if (particlesArray) {
+                for (let i = 0; i < particlesArray.length; i++) particlesArray[i].update();
+                for (let i = 0; i < particlesArray.length; i++) particlesArray[i].draw();
+                connectParticles();
+            }
+            if (!isRunning) {
+                hueShiftAngle = (hueShiftAngle + 0.05) % 360;
+                bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(0.6) hue-rotate(${hueShiftAngle}deg)`;
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        
+        // --- BAŞLANGIÇ ---
+        initializeWidget();
+
+        // Giriş animasyonunun akıcı olması için parçacık motorunu hafif bir gecikmeyle başlat.
+        // Bu, tarayıcının ilk animasyona odaklanmasını sağlar ve "kasılma" hissini ortadan kaldırır.
+        setTimeout(() => {
+            initParticles();
+            animateParticles();
+        }, 500); // 500 milisaniye (yarım saniye) gecikme
     </script>
 </body>
 </html>
