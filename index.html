@@ -17,7 +17,7 @@
         * { box-sizing: border-box; }
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background-color: #050505;
+            overflow: hidden; /* DÜZELTME: Body'nin arka plan rengini kaldırarak alttaki katmanların görünmesini sağla */
             font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex; justify-content: center; align-items: center;
         }
@@ -50,18 +50,19 @@
         #bg-layer {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #120524, #4a0e45, #15082b, #4a0e45);
-            background-size: 300% 300%; background-position: center;
-            filter: blur(40px) brightness(0.6); z-index: -10;
-            transition: filter 0.5s ease-out, background-image 0.5s ease;
+            background-size: 300% 300%;
+            filter: blur(40px) brightness(0.4); /* DÜZELTME: Parlaklığı daha da düşür */ z-index: -10;
+            transition: filter 0.5s ease-out;
             animation: animatedGradient 25s ease infinite;
         }
         @keyframes animatedGradient {
             0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%}
         }
         #bg-layer::after {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAUVBMVEWFhYWDg4N3d3dtbW17e3t1dXVnZ2d8fHx+fn55eXnaf39wcHBvb29oaGhora2xtLbAwMDk5OTBwcGtra2urq6goKCqqqqnp6e4uLgcLY/OAAAAnklEQVRIx+3RSRLDIAxE0QYhAbGZPNu5/z0zrXHiqiz5W72FqhqtVuuXAl3iOV7iPV/iSsAqZa9BS7YOmMXnNNX4TWGxRMn3R6SxRNgy0bzXOW8EBO8SAClsPdB3psqlvG+Lw7ONXg/pTld52BjgSSkA3PV2OOemjIDcZQWgVvONw60q7sIpR38EnHPSMDQ4MjDjLPozhAkGrVbr/z0ANjAF4AcbXmYAAAAASUVORK5CYII=');
-            opacity: 0.04; z-index: -9; pointer-events: none;
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -8;
+            background-size: cover; background-position: center;
+            opacity: 0; /* Başlangıçta görünmez */
+            transition: opacity 1.5s ease-in-out; /* Yavaş ve yumuşak geçiş */
         }
         
         #particle-canvas {
@@ -77,7 +78,7 @@
 
         /* --- SOL PANEL --- */
         .visualizer-panel {
-            flex: 1; background: rgba(255, 255, 255, 0.02);
+            flex: 2; /* Daha fazla yer kaplaması için flex değerini artır */ background: rgba(255, 255, 255, 0.02);
             backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 25px; box-shadow: 0 30px 60px rgba(0,0,0,0.6);
             position: relative; overflow: hidden;
@@ -189,10 +190,18 @@
             pointer-events: auto; background: rgba(0,0,0,0.5);
             display: inline-block; padding: 5px 10px; border-radius: 10px;
         }
+        .explanation-text {
+            margin-top: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.5);
+            max-width: 380px; /* Genişliğin çok artmasını önle */
+            margin-left: auto; margin-right: auto;
+            line-height: 1.4;
+        }
 
         /* --- SAĞ PANEL --- */
         .sc-panel {
-            flex: 1; background: rgba(10, 10, 10, 0.9); border-radius: 25px;
+            flex: 0 0 380px; /* Sabit genişlik, büyümesin veya küçülmesin */
+            max-width: 380px; /* Genişliği sınırla */
+            background: rgba(10, 10, 10, 0.9); border-radius: 25px;
             overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05);
             display: flex; flex-direction: column;
         }
@@ -279,11 +288,14 @@
             </div>
 
             <div class="controls-wrapper">
-                <button class="live-btn" id="start-capture-btn">
-                    <i class="fa-solid fa-power-off"></i> SİSTEMİ BAŞLAT
+                <button class="live-btn" id="start-btn">
+                    <i class="fa-solid fa-broadcast-tower"></i> CANLI SENKRONİZASYONU BAŞLAT
                 </button>
                 <div class="hint">
                     <i class="fa-solid fa-triangle-exclamation"></i> <b>"Bu Sekme (This Tab)"</b> seç ve <b>"Sesi Paylaş"</b>ı işaretle.
+                </div>
+                <div class="explanation-text">
+                    Bu mod, görsel efektlerin çalan müziğe gerçek zamanlı tepki vermesini sağlar. (Daha yüksek sistem kaynağı gerektirebilir)
                 </div>
             </div>
         </div>
@@ -305,8 +317,8 @@
         const gridCanvas = document.getElementById('grid-canvas');
         const gCtx = gridCanvas.getContext('2d');
         const particleCanvas = document.getElementById('particle-canvas');
-        const pCtx = particleCanvas.getContext('2d');
-        const startBtn = document.getElementById('start-capture-btn');
+        const pCtx = particleCanvas.getContext('2d'); 
+        const startBtn = document.getElementById('start-btn');
         const bgLayer = document.getElementById('bg-layer');
         const vizPanel = document.getElementById('viz-panel');
         const titleEl = document.getElementById('track-title');
@@ -320,10 +332,13 @@
         const particleToggle = document.getElementById('particle-toggle');
  
         // --- GLOBAL DEĞİŞKENLER ---
-        let audioContext, analyser, isRunning = false;
+        let audioContext, analyser;
+        let currentMode = 'simulation'; // 'simulation' veya 'realtime'
+        let isPlaying = false; // SoundCloud widget'ının durumunu takip eder
         let currentPalette = [[213, 0, 249], [0, 229, 255]];
         let targetPalette = [[213, 0, 249], [0, 229, 255]];
         let rotationAngle = 0;
+        let simulationBeatInterval;
         let trackChangeInterval;
 
         // --- AYARLAR (KULLANICI KONTROLLERİ) ---
@@ -344,7 +359,8 @@
             { name: 'line', icon: 'fa-solid fa-bars-staggered' },
             { name: 'mirror', icon: 'fa-solid fa-water' },
             { name: 'pulse', icon: 'fa-solid fa-bullseye' },
-            { name: '3d-sphere', icon: 'fa-solid fa-globe' } // YENİ 3D MODU
+            { name: '3d-sphere', icon: 'fa-solid fa-globe' },
+            { name: '3d-orb', icon: 'fa-solid fa-atom' } // YENİ: Enerji Küresi
         ];
         let currentStyleIndex = 0;
         
@@ -356,11 +372,13 @@
         recordImg.onload = () => {
             try {
                 const colorThief = new ColorThief();
-                targetPalette = colorThief.getPalette(recordImg, 2);
+                const newPalette = colorThief.getPalette(recordImg, 2);
+                if (newPalette) targetPalette = newPalette;
+                if (three.albumArtTexture) three.albumArtTexture.needsUpdate = true;
             } catch (e) {
                 targetPalette = [[213, 0, 249], [0, 229, 255]];
             }
-            if(!isRunning) drawStatic();
+            // drawStatic çağrısı kaldırıldı, mainLoop zaten sürekli çizim yapıyor.
         };
 
         // --- SOUNDCLOUD WIDGET ---
@@ -369,11 +387,12 @@
         function initializeWidget() {
             widget = SC.Widget(iframeElement);
             widget.bind(SC.Widget.Events.READY, function() {
-                loader.classList.add('hidden');
-                if (isRunning) startTrackChangeInterval();
-                widget.unbind(SC.Widget.Events.PLAY);
-                widget.unbind(SC.Widget.Events.FINISH);
+                // Yükleyiciyi gizle ve ana animasyon döngüsünü başlat
+                loader.classList.add('hidden'); 
+                widget.unbind(SC.Widget.Events.PLAY); widget.unbind(SC.Widget.Events.PAUSE); widget.unbind(SC.Widget.Events.FINISH);
                 widget.bind(SC.Widget.Events.PLAY, updateTrackInfo);
+                widget.bind(SC.Widget.Events.PLAY, () => { isPlaying = true; startSimulationBeat(); });
+                widget.bind(SC.Widget.Events.PAUSE, () => { isPlaying = false; stopSimulationBeat(); });
                 widget.bind(SC.Widget.Events.FINISH, () => setTimeout(updateTrackInfo, 1000));
             });
         }
@@ -386,12 +405,16 @@
                 artistEl.innerText = sound.user.username;
                 titleEl.classList.toggle('scrolling', titleSpan.offsetWidth > titleEl.offsetWidth);
                 
+                const bgAfter = document.querySelector('#bg-layer::after');
+
                 if(sound.artwork_url) {
                     const highResUrl = sound.artwork_url.replace('-large', '-t500x500');
-                    bgLayer.style.backgroundImage = `url('${highResUrl}')`;
+                    // DÜZELTME: Yumuşak geçiş için doğrudan değiştirmek yerine ::after elementini kullan
+                    bgLayer.style.setProperty('--bg-image-url', `url('${highResUrl}')`);
                     recordImg.src = highResUrl;
                 } else {
-                    recordImg.src = defaultImageBase64;
+                    // Resim yoksa ::after elementini gizle
+                    bgLayer.style.setProperty('--bg-image-url', 'none');
                     targetPalette = [[213, 0, 249], [0, 229, 255]];
                 }
             });
@@ -407,9 +430,8 @@
             gridCanvas.height = window.innerHeight;
             particleCanvas.width = window.innerWidth;
             particleCanvas.height = window.innerHeight;
-            if (three.renderer) three.renderer.setSize(w, h);
+            if (three.renderer) { three.renderer.setSize(w, h); three.renderer.setPixelRatio(window.devicePixelRatio); }
             if (three.camera) { three.camera.aspect = w / h; three.camera.updateProjectionMatrix(); }
-            if(!isRunning) drawStatic();
         }
         window.addEventListener('resize', resizeCanvas);
         setTimeout(resizeCanvas, 100);
@@ -423,7 +445,7 @@
             const params = "&color=%237b1fa2&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=false";
             iframeElement.src = baseUrl + newArtist.url + params;
             iframeElement.onload = initializeWidget;
-            if (isRunning && trackChangeInterval) {
+            if (trackChangeInterval) {
                 clearInterval(trackChangeInterval);
                 trackChangeInterval = null;
             }
@@ -437,7 +459,7 @@
                 currentStyleIndex = (currentStyleIndex + 1) % visualizerStyles.length;
                 const newStyle = visualizerStyles[currentStyleIndex];
                 styleSwitcher.querySelector('i').className = newStyle.icon;
-                if (newStyle.name === '3d-sphere') {
+                if (newStyle.name.startsWith('3d-')) {
                     canvas.style.display = 'none';
                     canvas3D.style.display = 'block';
                     if (!three.initialized) three.init();
@@ -445,7 +467,6 @@
                     canvas.style.display = 'block';
                     canvas3D.style.display = 'none';
                 }
-                if(!isRunning) drawStatic();
                 canvas.style.opacity = '1';
                 canvas3D.style.opacity = '1';
             }, 300);
@@ -463,16 +484,16 @@
         effectIntensitySlider.oninput = (e) => settings.effectIntensity = parseFloat(e.target.value);
         bgBlurSlider.oninput = (e) => {
             settings.backgroundBlur = parseFloat(e.target.value);
-            if (!isRunning) bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(0.6) hue-rotate(${hueShiftAngle}deg)`;
+            if (currentMode === 'simulation') bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(0.6) hue-rotate(${hueShiftAngle}deg)`;
         };
         particleToggle.onchange = (e) => {
             settings.useParticles = e.target.checked;
             particleCanvas.style.opacity = settings.useParticles ? '1' : '0';
         };
-
+        
         // --- SİSTEM BAŞLATMA / DURDURMA ---
-        startBtn.onclick = async function() {
-            if (isRunning) return;
+        startBtn.onclick = async function() { 
+            if (currentMode === 'realtime') { stopSystem(); return; }
             try {
                 const stream = await navigator.mediaDevices.getDisplayMedia({
                     video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
@@ -483,27 +504,31 @@
                     alert("HATA: 'Sesi Paylaş' kutucuğunu işaretlemedin!");
                     return;
                 }
-                startBtn.innerHTML = '<i class="fa-solid fa-waveform"></i> SİSTEM AKTİF';
-                startBtn.style.background = "#222"; 
-                isRunning = true;
+                stopSimulationBeat(); // Simülasyonu durdur
+                currentMode = 'realtime';
+                startBtn.innerHTML = '<i class="fa-solid fa-stop-circle"></i> CANLIYI DURDUR';
+                startBtn.style.background = "#d32f2f"; // Kırmızı tonu
                 stream.getTracks()[0].onended = () => stopSystem();
                 resizeCanvas();
                 setupAudioAnalysis(stream);
             } catch (err) { if (err.name !== 'NotAllowedError') alert("Hata: " + err.message); }
         };
 
-        function stopSystem(silent = false) {
+        function stopSystem() {
             if (trackChangeInterval) { clearInterval(trackChangeInterval); trackChangeInterval = null; }
-            isRunning = false;
-            if (!silent) {
-                startBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> SİSTEMİ BAŞLAT';
-                startBtn.style.background = "linear-gradient(90deg, #7b1fa2 0%, #4a148c 100%)";
-                bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(0.6)`;
-                document.body.style.setProperty('--vignette-opacity', '0'); // Vignette'i kapat
-                titleEl.style.textShadow = ''; artistEl.style.textShadow = '';
-            }
+            currentMode = 'simulation';
+            startBtn.innerHTML = '<i class="fa-solid fa-broadcast-tower"></i> CANLI SENKRONİZASYONU BAŞLAT';
+            startBtn.disabled = false;
+            startBtn.style.background = "linear-gradient(90deg, #7b1fa2 0%, #4a148c 100%)";
+            
+            // DÜZELTME: Yumuşak geçiş için arka planı sıfırla
+            const bgAfter = document.querySelector('#bg-layer::after');
+            bgLayer.style.setProperty('--bg-image-url', 'none');
+
+            bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(0.6)`;
+            document.body.style.setProperty('--vignette-opacity', '0');
+            titleEl.style.textShadow = ''; artistEl.style.textShadow = '';
             if(audioContext) audioContext.close();
-            drawStatic();
         }
 
         // --- SES ANALİZİ VE EFEKTLER ---
@@ -524,79 +549,169 @@
             analyser.fftSize = 256;
             analyser.smoothingTimeConstant = 0.8;
             const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            let lastPlayedSoundId = null, lowPass = 0;
+            startTrackChangeInterval();
+        }
 
-            function animate() {
-                if (!isRunning) return;
-                requestAnimationFrame(animate);
+        function processAudioData(sourceData, numBars) {
+            if (!sourceData) return new Uint8Array(numBars).fill(0);
+            const processedData = new Uint8Array(numBars);
+            const sourceLength = sourceData.length;
+            const step = Math.floor(sourceLength / numBars);
+            if (step < 1) return sourceData;
+
+            for (let i = 0; i < numBars; i++) {
+                const start = i * step;
+                const end = start + step;
+                let sum = 0;
+                for (let j = start; j < end; j++) {
+                    sum += sourceData[j];
+                }
+                processedData[i] = sum / step;
+            }
+            return processedData;
+        }
+
+        // --- SİMÜLASYON MODU FONKSİYONLARI ---
+        function startSimulationBeat() {
+            if (simulationBeatInterval || currentMode !== 'simulation' || !isPlaying) return;
+            const bpm = 120; // Ortalama bir BPM değeri
+            const interval = 60000 / bpm;
+            simulationBeatInterval = setInterval(() => {
+                beatIntensity = 1; // Vuruş anında enerjiyi 1 yap
+                if (visualizerStyles[currentStyleIndex].name === 'pulse') createShockwave(150);
+            }, interval);
+        }
+
+        function stopSimulationBeat() {
+            clearInterval(simulationBeatInterval);
+            simulationBeatInterval = null;
+        }
+
+        // --- ANA ANİMASYON DÖNGÜSÜ ---
+        let lowPass = 0;
+        // YENİ: Gelişmiş simülasyon için durum değişkenleri
+        const sim = {
+            time: 0,
+            bassPulse: 0,
+            treblePulse: 0,
+            lastBassBeat: 0,
+            lastTrebleBeat: 0,
+            bassInterval: 60000 / 120, 
+            trebleInterval: (60000 / 120) / 2,
+        };
+
+        let patternTime = 0; // YENİ: Desen animasyonları için zamanlayıcı
+        function mainLoop() {
+            let trebleAvg = 0;
+            requestAnimationFrame(mainLoop);
+
+            let dataArray = null;
+            let bassAvg = 0;
+            const now = Date.now();
+
+            if (currentMode === 'realtime' && analyser) {
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
                 analyser.getByteFrequencyData(dataArray);
-                
+
+                // Gerçek bass ortalamasını daha doğru hesapla
                 let bassSum = 0, trebleSum = 0;
-                const bassRange = Math.floor(bufferLength * 0.2);
-                const trebleRange = Math.floor(bufferLength * 0.4);
-                for (let i = 0; i < bassRange; i++) bassSum += dataArray[i];
-                for (let i = bufferLength - trebleRange; i < bufferLength; i++) trebleSum += dataArray[i];
-                let bassAvg = bassSum / bassRange;
-                let trebleAvg = trebleSum / trebleRange;
+                const bassEnd = Math.floor(bufferLength * 0.15);
+                const trebleStart = Math.floor(bufferLength * 0.4);
+                const trebleEnd = Math.floor(bufferLength * 0.8);
 
-                // --- DUYGUSAL RENK PALETİ (DEVRE DIŞI) ---
-                // İsteğiniz üzerine, renklerin sadece kapak resminden alınması için
-                // müziğin enerjisine göre renk paletini değiştiren bu bölümü devre dışı bırakıyoruz.
-                // if (bassAvg > 140 && trebleAvg > 80) targetPalette = PALETTES.ENERGETIC;
-                // else if (bassAvg > 130 && trebleAvg < 60) targetPalette = PALETTES.DARK;
-                // else if (bassAvg < 100 && trebleAvg > 70) targetPalette = PALETTES.CHILL;
-                // else if (bassAvg < 80 && trebleAvg < 50) targetPalette = PALETTES.ATMOSPHERIC;
+                for (let i = 0; i < bassEnd; i++) bassSum += dataArray[i];
+                for (let i = trebleStart; i < trebleEnd; i++) trebleSum += dataArray[i];
 
-                // Renkleri yumuşakça hedefe doğru ilerlet
-                for(let i=0; i<2; i++) for(let j=0; j<3; j++) currentPalette[i][j] += (targetPalette[i][j] - currentPalette[i][j]) * 0.02;
+                bassAvg = (bassSum / bassEnd) * 1.2 || 0; // Bası biraz daha vurgula
+                trebleAvg = (trebleSum / (trebleEnd - trebleStart)) || 0;
 
-                // --- BPM & VURUŞ ENERJİSİ ---
-                beatIntensity *= 0.92;
-                smoothedBPM += (currentBPM - smoothedBPM) * 0.05;
+                // Gerçek zamanlı BPM ve vuruş tespiti
                 lowPass = lowPass * 0.9 + 0.1 * bassAvg;
-                if (bassAvg > lowPass + 35 && Date.now() - lastBeatTime > 250) { // 240 BPM limit
-                    const now = Date.now();
-                    if (lastBeatTime > 0) {
-                        const interval = now - lastBeatTime;
-                        beatIntervals.push(interval);
-                        if (beatIntervals.length > 10) beatIntervals.shift();
-                        const avgInterval = beatIntervals.reduce((a, b) => a + b) / beatIntervals.length;
-                        currentBPM = 60000 / avgInterval;
-                    }
-                    lastBeatTime = now;
+                if (bassAvg > lowPass + 35 && Date.now() - lastBeatTime > 250) {
+                    lastBeatTime = Date.now();
                     beatIntensity = 1;
                     if (visualizerStyles[currentStyleIndex].name === 'pulse') createShockwave(bassAvg);
                 }
+            } else { // YENİ: Estetik Desen Simülasyonu
+                patternTime += 0.01;
                 
-                // --- VURUŞ ENERJİSİNE DAYALI EFEKTLER (AYARLANABİLİR) ---
-                const intensity = settings.effectIntensity;
-                const panelScale = 1 + (beatIntensity * 0.015 * intensity);
-                vizPanel.style.transform = `scale(${panelScale})`;
-                let brightness = 0.6 + (bassAvg / 255) * 1.4 + (beatIntensity * 0.15 * intensity);
+                // DEĞİŞİKLİK: "Patlama" efekti yerine sakin bir "nefes alma" efekti.
+                if (isPlaying) {
+                    beatIntensity = Math.sin(patternTime * 2) * 0.5 + 0.5; // 0 ile 1 arasında yumuşakça salınır.
+                } else {
+                    beatIntensity *= 0.95; // Müzik durduğunda efekti yavaşça söndür.
+                }
 
-                // 3. Dinamik Vignette Parlaması
-                document.body.style.setProperty('--vignette-opacity', String(beatIntensity * 0.6 * intensity));
+                // 3D Küre için hala sahte dataArray gerekiyor
+                if (visualizerStyles[currentStyleIndex].name.startsWith('3d-')) {
+                    const bufferLength = 128;
+                    dataArray = new Uint8Array(bufferLength);
+                    for (let i = 0; i < bufferLength; i++) {
+                        const a = Math.sin(patternTime * 2 + i * 0.2) * 0.5 + 0.5;
+                        dataArray[i] = a * 100 + beatIntensity * 150;
+                    }
+                    bassAvg = dataArray[0] || 0;
+                } else {
+                    // Diğer stiller için doğrudan canvas'a çizim yap
+                    dataArray = null; 
+                    bassAvg = (Math.sin(patternTime * 2) * 0.5 + 0.5) * 150 + beatIntensity * 100;
+                    
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    const style = visualizerStyles[currentStyleIndex].name;
+                    titleEl.style.opacity = artistEl.style.opacity = (style === 'circle' || style === 'pulse') ? '1' : '0';
 
-                let hueRotate = (bassAvg / 1.5);
-                bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(${brightness}) hue-rotate(${hueRotate}deg)`;
-                const textGlow = (bassAvg / 255) * 25;
-                titleEl.style.textShadow = `0 0 ${10 + textGlow}px rgba(255, 255, 255, 0.7), 0 0 ${20 + textGlow * 1.5}px rgba(213, 0, 249, 0.5)`;
-                artistEl.style.textShadow = `0 0 ${2 + textGlow * 0.2}px rgba(255, 255, 255, 0.5)`;
-
-                drawFrame(dataArray, true, beatIntensity * intensity);
-                drawGrid(beatIntensity * intensity);
-                if (three.initialized) three.update(dataArray, beatIntensity * intensity);
+                    switch (style) {
+                        case 'circle':
+                            drawSimCirclePattern(patternTime, beatIntensity);
+                            drawRecordPlayer(isPlaying);
+                            break;
+                        case 'line':
+                            drawSimLinePattern(patternTime, beatIntensity);
+                            break;
+                        case 'mirror':
+                            drawSimMirrorPattern(patternTime, beatIntensity);
+                            break;
+                        case 'pulse':
+                            drawSimPulsePattern(patternTime, beatIntensity);
+                            break;
+                    }
+                }
             }
-            startTrackChangeInterval();
-            animate();
+
+            // Renkleri yumuşakça hedefe doğru ilerlet
+            for(let i=0; i<2; i++) for(let j=0; j<3; j++) currentPalette[i][j] += (targetPalette[i][j] - currentPalette[i][j]) * 0.02;
+
+            // DÜZELTME: Vuruş enerjisini her zaman azalt. Bu, efektlerin takılı kalmasını önler.
+            if (currentMode === 'realtime') beatIntensity *= 0.92;
+
+            // --- VURUŞ ENERJİSİNE DAYALI EFEKTLER (AYARLANABİLİR) ---
+            const intensity = settings.effectIntensity;
+            const panelScale = 1 + (beatIntensity * 0.015 * intensity);
+            vizPanel.style.transform = `scale(${panelScale})`;
+            let brightness = 0.6 + (bassAvg / 255) * 1.4 + (beatIntensity * 0.15 * intensity);
+            document.body.style.setProperty('--vignette-opacity', String(beatIntensity * 0.6 * intensity));
+            let hueRotate = (bassAvg / 1.5);
+            bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(${brightness}) hue-rotate(${hueRotate}deg)`;
+            const textGlow = (bassAvg / 255) * 25;
+            titleEl.style.textShadow = `0 0 ${10 + textGlow}px rgba(255, 255, 255, 0.7), 0 0 ${20 + textGlow * 1.5}px rgba(213, 0, 249, 0.5)`;
+            artistEl.style.textShadow = `0 0 ${2 + textGlow * 0.2}px rgba(255, 255, 255, 0.5)`;
+
+            // Çizim fonksiyonlarını çağır
+            // Simülasyon modunda çizim yukarıda switch-case içinde yapılıyor.
+            if (currentMode === 'realtime') {
+                drawFrame(dataArray, isPlaying, beatIntensity * intensity);
+            }
+            drawGrid(beatIntensity * intensity);
+            animateParticles(); // Parçacık animasyonunu ana döngüden çağır
+            if (three.initialized) three.update(dataArray, beatIntensity * intensity, bassAvg, trebleAvg);
         }
 
         function startTrackChangeInterval() {
             if (trackChangeInterval) clearInterval(trackChangeInterval);
             let lastPlayedSoundId = null;
             trackChangeInterval = setInterval(() => {
-                if (!isRunning || !widget) return;
+                if (!widget) return;
                 widget.getCurrentSound((currentSound) => {
                     if (currentSound && currentSound.id !== lastPlayedSoundId) {
                         lastPlayedSoundId = currentSound.id;
@@ -608,31 +723,50 @@
 
         // --- 2D ÇİZİM FONKSİYONLARI ---
         function drawFrame(dataArray, isAnimating, beatIntensity = 0) {
+            if (!dataArray) return; // Eğer data yoksa çizim yapma (simülasyon modu için)
+            const processedData = processAudioData(dataArray, 64); // Veriyi 64 çubuğa indirge
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const style = visualizerStyles[currentStyleIndex].name;
-            if (style === '3d-sphere') return; // 3D modunda 2D çizim yapma
-            titleEl.style.opacity = artistEl.style.opacity = (style === 'circle' || style === 'pulse') ? '1' : '0';
-            if (style === 'circle') drawCircleVisualizer(dataArray, beatIntensity);
-            else if (style === 'line') drawLineVisualizer(dataArray, beatIntensity);
-            else if (style === 'mirror') drawMirrorVisualizer(dataArray, beatIntensity);
-            else if (style === 'pulse') drawPulseVisualizer(dataArray, beatIntensity); 
+            const is3D = style.startsWith('3d-');
+            titleEl.style.opacity = artistEl.style.opacity = (is3D || style === 'line' || style === 'mirror') ? '0' : '1';
+            if (style === 'circle') drawCircleVisualizer(processedData, beatIntensity);
+            else if (style === 'line') drawLineVisualizer(processedData, beatIntensity);
+            else if (style === 'mirror') drawMirrorVisualizer(processedData, beatIntensity);
+            else if (style === 'pulse') drawPulseVisualizer(processedData, beatIntensity);
             if (style === 'circle') drawRecordPlayer(isAnimating);
         }
         function drawCircleVisualizer(dataArray, beatIntensity) {
             const centerX = canvas.width / 2, centerY = canvas.height / 2, radius = 160;
             if (!dataArray) return;
+
+            // OPTİMİZASYON: Her çizgi için gölge çizmek yerine, tüm çizgileri tek seferde çiz.
+            // VE: Tüm çizgileri tek bir path'de birleştirerek çizim çağrılarını azalt.
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.shadowColor = getRainbowColor(patternTime + 0.5);
+            ctx.shadowBlur = 15;
+            
+            ctx.beginPath(); // Tüm çizgiler için tek bir path başlat
             for (let i = 0; i < dataArray.length; i++) {
-                const value = dataArray[i]; if (value < 10) continue;
+                // YENİ: Gelişmiş Kanal Dengeleme (Bas Enerjisi Aktarımı)
+                const rawValue = dataArray[i];
+                const progress = i / dataArray.length;
+                const bassEnergy = (dataArray[0] + dataArray[1]) / 2;
+                const bassContribution = bassEnergy * progress * 0.5; // Sona doğru bas etkisini artır
+                const dynamicValue = Math.pow(rawValue, 0.9) + bassContribution;
+                const value = Math.min(255, dynamicValue);
                 const beatMultiplier = 1 + (beatIntensity * 0.25);
                 const barHeight = (value * 0.9 * beatMultiplier) + 5 ;
                 const angle = (i * 2 * Math.PI) / dataArray.length;
-                const xStart = centerX + Math.cos(angle) * radius, yStart = centerY + Math.sin(angle) * radius;
-                const xEnd = centerX + Math.cos(angle) * (radius + barHeight), yEnd = centerY + Math.sin(angle) * (radius + barHeight);
-                const color = getColorFromPalette(value);
-                ctx.beginPath(); ctx.moveTo(xStart, yStart); ctx.lineTo(xEnd, yEnd);
-                ctx.shadowColor = color; ctx.shadowBlur = 15;
-                ctx.strokeStyle = color; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                const xStart = centerX + cos * radius, yStart = centerY + sin * radius;
+                const xEnd = centerX + cos * (radius + barHeight), yEnd = centerY + sin * (radius + barHeight);
+                ctx.moveTo(xStart, yStart);
+                ctx.lineTo(xEnd, yEnd);
             }
+            ctx.strokeStyle = getRainbowColor(patternTime);
+            ctx.stroke(); // Tüm çizgileri tek seferde çiz
         }
         function drawFadedArtwork() {
             if (recordImg.complete && recordImg.naturalWidth > 0) {
@@ -648,16 +782,22 @@
         }
         function drawLineVisualizer(dataArray, beatIntensity) {
             if (!dataArray) return;
-            const bufferLength = dataArray.length;
-            const barWidth = (canvas.width / bufferLength) * 2.5;
+            const numBars = dataArray.length;
+            const barWidth = canvas.width / numBars;
             let x = 0;
-            for (let i = 0; i < bufferLength; i++) {
-                const value = dataArray[i];
-                const beatMultiplier = 1 + (beatIntensity * 0.3);
+            for (let i = 0; i < numBars; i++) {
+                // DÜZELTME: Logaritmik güçlendirmeyi tüm efektlere uygula
+                 const rawValue = dataArray[i];
+                const progress = i / numBars;
+                const bassEnergy = (dataArray[0] + dataArray[1]) / 2;
+                const bassContribution = bassEnergy * progress * 0.4;
+                const dynamicValue = Math.pow(rawValue, 0.9) + bassContribution;
+                const value = Math.min(255, dynamicValue);
+                const beatMultiplier = 1 + (beatIntensity * 0.3); 
                 const barHeight = (value / 255) * (canvas.height * 0.7) * beatMultiplier;
                 const color = getColorFromPalette(value);
-                ctx.fillStyle = color;
-                ctx.shadowColor = color;
+                ctx.fillStyle = color; 
+                ctx.shadowColor = color; 
                 ctx.shadowBlur = 10;
                 ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
                 x += barWidth + 1;
@@ -666,13 +806,19 @@
         }
         function drawMirrorVisualizer(dataArray, beatIntensity) {
             if (!dataArray) return;
-            const bufferLength = dataArray.length;
-            const barWidth = canvas.width / bufferLength;
+            const numBars = dataArray.length;
+            const barWidth = canvas.width / numBars;
             const centerY = canvas.height / 2;
             let x = 0;
-            for (let i = 0; i < bufferLength; i++) {
-                const value = dataArray[i];
-                const beatMultiplier = 1 + (beatIntensity * 0.3);
+            for (let i = 0; i < numBars; i++) {
+                // DÜZELTME: Logaritmik güçlendirmeyi tüm efektlere uygula
+                 const rawValue = dataArray[i];
+                const progress = i / numBars;
+                const bassEnergy = (dataArray[0] + dataArray[1]) / 2;
+                const bassContribution = bassEnergy * progress * 0.4;
+                const dynamicValue = Math.pow(rawValue, 0.9) + bassContribution;
+                const value = Math.min(255, dynamicValue);
+                const beatMultiplier = 1 + (beatIntensity * 0.3); 
                 const barHeight = (value / 255) * (canvas.height * 0.4) * beatMultiplier;
                 const color = getColorFromPalette(value);
                 ctx.fillStyle = color;
@@ -680,7 +826,7 @@
                 ctx.shadowBlur = 10;
                 ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
                 ctx.fillRect(x, centerY, barWidth, barHeight);
-                x += barWidth;
+                x += barWidth + 1; // Çubuklar arası boşluk
             }
             drawFadedArtwork();
         }
@@ -707,13 +853,90 @@
             }
             ctx.restore();
             updateAndDrawShockwaves();
+        } 
+
+        // --- YENİ: SİMÜLASYON DESEN FONKSİYONLARI ---
+        function drawSimCirclePattern(t, beat) {
+            const centerX = canvas.width / 2, centerY = canvas.height / 2;
+            const beatScale = 1 + beat * 0.2;
+            ctx.lineWidth = 4;
+            for (let i = 1; i < 5; i++) {
+                const radius = (100 + i * 40 + Math.sin(t * 2 + i) * 10) * beatScale;
+                const opacity = 0.3 + (Math.sin(t * 3 + i * 0.5) * 0.5 + 0.5) * 0.5;
+                const color = getRainbowColor(t + i * 0.2, opacity);
+                ctx.strokeStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 25;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
         }
+        function drawSimLinePattern(t, beat) {
+            const numBars = 40;
+            const barWidth = canvas.width / numBars;
+            const beatHeight = beat * (canvas.height * 0.3);
+            for (let i = 0; i < numBars; i++) {
+                const phase = t * 3 + (i / numBars) * Math.PI * 4;
+                const height = (Math.sin(phase) * 0.5 + 0.5) * (canvas.height * 0.5) + beatHeight;
+                const color = getRainbowColor(t + i * 0.05);
+                ctx.fillStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 20;
+                ctx.fillRect(i * barWidth, canvas.height - height, barWidth - 2, height);
+            }
+            drawFadedArtwork();
+        }
+        function drawSimMirrorPattern(t, beat) {
+            const numBars = 50;
+            const barWidth = canvas.width / numBars;
+            const centerY = canvas.height / 2;
+            const beatHeight = beat * (canvas.height * 0.2);
+            for (let i = 0; i < numBars; i++) {
+                const phase = t * 2 + (i / numBars) * Math.PI * 6;
+                const height = (Math.sin(phase) * 0.5 + 0.5) * (canvas.height * 0.3) + beatHeight;
+                const color = getRainbowColor(t + i * 0.04);
+                ctx.fillStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 20;
+                ctx.fillRect(i * barWidth, centerY - height, barWidth - 2, height);
+                ctx.fillRect(i * barWidth, centerY, barWidth - 2, height);
+            }
+            drawFadedArtwork();
+        }
+        function drawSimPulsePattern(t, beat) {
+            const centerX = canvas.width / 2, centerY = canvas.height / 2;
+            const baseRadius = 100 + Math.sin(t * 4) * 20;
+            const radius = baseRadius + beat * 80;
+            const color = getRainbowColor(t);
+            ctx.save();
+            ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.clip();
+            ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 30;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (recordImg.complete && recordImg.naturalWidth > 0) {
+                ctx.globalAlpha = 0.8;
+                ctx.drawImage(recordImg, centerX - radius, centerY - radius, radius * 2, radius * 2);
+            }
+            ctx.restore();
+            // DEĞİŞİKLİK: Sakin modda şok dalgası istenmiyor.
+            updateAndDrawShockwaves();
+        }
+
+        // --- RENK YÖNETİMİ ---
         function getColorFromPalette(value) {
             const ratio = value / 255;
             const r = Math.round(currentPalette[0][0] * (1 - ratio) + currentPalette[1][0] * ratio);
             const g = Math.round(currentPalette[0][1] * (1 - ratio) + currentPalette[1][1] * ratio);
             const b = Math.round(currentPalette[0][2] * (1 - ratio) + currentPalette[1][2] * ratio);
             return `rgb(${r}, ${g}, ${b})`;
+        }
+        function getRainbowColor(t, opacity = 1) {
+            const time = (t % 1); // 0-1 arasında döngü
+            const ratio = time < 0.5 ? time * 2 : (1 - time) * 2; // Üçgen dalga (0 -> 1 -> 0)
+            const r = Math.round(currentPalette[0][0] * (1 - ratio) + currentPalette[1][0] * ratio);
+            const g = Math.round(currentPalette[0][1] * (1 - ratio) + currentPalette[1][1] * ratio);
+            const b = Math.round(currentPalette[0][2] * (1 - ratio) + currentPalette[1][2] * ratio);
+            return `rgba(${r}, ${g}, ${b}, ${opacity})`;
         }
         let shockwaves = [];
         function createShockwave(value) {
@@ -736,7 +959,10 @@
         function drawRecordPlayer(isAnimating) {
             const centerX = canvas.width / 2, centerY = canvas.height / 2;
             ctx.save(); ctx.translate(centerX, centerY);
-            if (isAnimating) rotationAngle += (smoothedBPM / 120) * 0.01;
+            // DÜZELTME: Takılma efektini önlemek için BPM'e bağlı dönüş yerine sabit hız kullan.
+            // Bu, müziğin ritmi ne olursa olsun akıcı bir dönüş sağlar.
+            if (isAnimating) rotationAngle += 0.01;
+
             ctx.rotate(rotationAngle);
             ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
             if (recordImg.complete && recordImg.naturalWidth > 0) ctx.drawImage(recordImg, -150, -150, 300, 300);
@@ -745,24 +971,51 @@
             ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fillStyle = "#000"; ctx.fill();
             ctx.restore();
         }
-        function drawStatic() { drawFrame(null, false); }
 
         // --- 3D YÖNETİMİ (THREE.JS) ---
         const three = {
-            initialized: false,
-            scene: null, camera: null, renderer: null, sphere: null,
+            initialized: false, scene: null, camera: null, renderer: null, 
+            sphereGroup: null, orbGroup: null,
             init: function() {
                 this.scene = new THREE.Scene();
-                this.camera = new THREE.PerspectiveCamera(75, canvas3D.width / canvas3D.height, 0.1, 1000);
+                this.camera = new THREE.PerspectiveCamera(60, canvas3D.width / canvas3D.height, 0.1, 1000);
                 this.renderer = new THREE.WebGLRenderer({ canvas: canvas3D, alpha: true });
                 this.renderer.setSize(canvas3D.width, canvas3D.height);
-                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Performans için sınrla
 
+                // --- 3D KÜRE ---
                 const geometry = new THREE.IcosahedronGeometry(2, 64);
                 geometry.setAttribute('basePosition', new THREE.BufferAttribute(geometry.attributes.position.array.slice(), 3));
                 const material = new THREE.MeshStandardMaterial({ color: 0xffffff, wireframe: true });
-                this.sphere = new THREE.Mesh(geometry, material);
-                this.scene.add(this.sphere);
+                const sphere = new THREE.Mesh(geometry, material);
+                this.sphereGroup = new THREE.Group();
+                this.sphereGroup.add(sphere);
+                this.scene.add(this.sphereGroup);
+
+                // --- YENİ: Enerji Küresi ---
+                this.orbGroup = new THREE.Group();
+                const orbGeometry = new THREE.IcosahedronGeometry(1.8, 64);
+                orbGeometry.setAttribute('basePosition', new THREE.BufferAttribute(orbGeometry.attributes.position.array.slice(), 3));
+                
+                // DÜZELTME: "Full beyaz" sorununu çözmek için ShaderMaterial yerine MeshStandardMaterial kullan.
+                // Shader'lar daha karmaşıktır ve ışıklandırma bilgisi gerektirir. Standart materyal daha güvenilirdir.
+                const orbMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xffffff, 
+                    emissive: 0x000000, 
+                    metalness: 0.4, 
+                    roughness: 0.5 
+                });
+
+                const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+                this.orbGroup.add(orb);
+
+                // YENİ: İç Çekirdek
+                const innerCoreGeom = new THREE.IcosahedronGeometry(0.5, 5);
+                const innerCoreMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x333333 });
+                const innerCore = new THREE.Mesh(innerCoreGeom, innerCoreMat);
+                this.orbGroup.add(innerCore);
+
+                this.scene.add(this.orbGroup);
 
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
                 this.scene.add(ambientLight);
@@ -773,30 +1026,79 @@
                 this.camera.position.z = 5;
                 this.initialized = true;
             },
-            update: function(dataArray, beatIntensity) {
-                if (!this.initialized || !dataArray) return;
-                this.sphere.rotation.x += 0.001; this.sphere.rotation.y += 0.002;
+            update: function(dataArray, beatIntensity, bassAvg = 0, trebleAvg = 0) {
+                if (!this.initialized || !dataArray) return; 
+                const processedData = processAudioData(dataArray, 64);
+                const style = visualizerStyles[currentStyleIndex].name;
+                const color = new THREE.Color(getRainbowColor(patternTime));
 
-                const positions = this.sphere.geometry.attributes.position;
-                const basePositions = this.sphere.geometry.attributes.basePosition;
-                const bassAvg = dataArray.slice(0, 32).reduce((a, b) => a + b) / 32;
-                
-                for (let i = 0; i < positions.count; i++) {
-                    const base_x = basePositions.getX(i);
-                    const base_y = basePositions.getY(i);
-                    const base_z = basePositions.getZ(i);
-                    const offset = (dataArray[i % dataArray.length] / 255) * 0.3 * (1 + beatIntensity);
-                    const final_x = base_x + (base_x * offset);
-                    const final_y = base_y + (base_y * offset);
-                    const final_z = base_z + (base_z * offset);
-                    positions.setXYZ(i, final_x, final_y, final_z);
+                this.sphereGroup.visible = style === '3d-sphere';
+                this.orbGroup.visible = style === '3d-orb';
+
+                if (style === '3d-sphere') {
+                    const sphere = this.sphereGroup.children[0];
+                    sphere.rotation.x += 0.001; sphere.rotation.y += 0.002;
+                    const positions = sphere.geometry.attributes.position;
+                    const basePositions = sphere.geometry.attributes.basePosition;
+                    
+                    // DÜZELTME: Küre deformasyon mantığını ilk, düzgün çalışan haline geri getir.
+                    for (let i = 0; i < positions.count; i++) {
+                        const base_x = basePositions.getX(i);
+                        const base_y = basePositions.getY(i); 
+                        const base_z = basePositions.getZ(i);
+                        // DÜZELTME: Yapay destek olmadan, sadece gerçek ses verisine tepki ver
+                        const rawValue = processedData[i % processedData.length];
+                        const dynamicValue = Math.pow(rawValue, 0.9); // Sadece dinamik sıkıştırma kullan
+                        const offset = (dynamicValue / 255) * 0.25 * (1 + beatIntensity);
+                        positions.setXYZ(i, base_x * (1 + offset), base_y * (1 + offset), base_z * (1 + offset));
+                    } 
+                    positions.needsUpdate = true;
+                    sphere.geometry.computeVertexNormals();
+                    sphere.material.color.lerp(color, 0.1);
                 }
-                positions.needsUpdate = true;
-                this.sphere.geometry.computeVertexNormals();
 
-                const color = new THREE.Color(getColorFromPalette(bassAvg));
-                this.sphere.material.color.lerp(color, 0.1);
-                
+                if (style === '3d-orb') {
+                    const orb = this.orbGroup.children[0];
+                    orb.rotation.x += 0.001; orb.rotation.y += 0.002;
+                    const positions = orb.geometry.attributes.position;
+                    const basePositions = orb.geometry.attributes.basePosition.array;
+                    const newPositions = new Float32Array(basePositions); // Her karede yeni bir dizi oluştur
+
+                    // Deprem Dalgalanması Efekti
+                    for (let i = 0; i < positions.count; i++) {
+                        const base_x = basePositions[i * 3];
+                        const base_y = basePositions[i * 3 + 1];
+                        const base_z = basePositions[i * 3 + 2];
+
+                        // Ana "deprem" dalgası (Bastan etkilenir)
+                        const bassWave = Math.sin(base_x * 5 + patternTime * 4) * Math.cos(base_y * 5 + patternTime * 2);
+                        
+                        // Yüzeydeki hızlı "titreşimler" (Tizden etkilenir)
+                        const trebleWave = Math.sin(base_y * 25 + patternTime * 20) * Math.cos(base_z * 25 + patternTime * 15);
+                        const waveFactor = bassWave + (trebleWave * (trebleAvg / 255) * 0.5);
+                        const amplitude = (bassAvg / 255) * 0.08 + beatIntensity * 0.15;
+                        const waveOffset = 1.0 + waveFactor * amplitude;
+
+                        newPositions[i * 3] = base_x * waveOffset;
+                        newPositions[i * 3 + 1] = base_y * waveOffset;
+                        newPositions[i * 3 + 2] = base_z * waveOffset;
+                    }
+                    
+                    // DÜZELTME: Hesaplanmış yeni pozisyonları geometriye ata. Bu en güvenilir yöntemdir.
+                    positions.set(newPositions);
+                    positions.needsUpdate = true;
+                    orb.geometry.computeVertexNormals();
+
+                    // Shader materyalini ve iç çekirdeği güncelle
+                    orb.material.color.lerp(color, 0.1); 
+                    orb.material.emissive.set(color).multiplyScalar(beatIntensity * 0.5); 
+
+                    const innerCore = this.orbGroup.children[1];
+                    innerCore.scale.setScalar(1 + beatIntensity * 0.5);
+                    innerCore.material.color.set(getRainbowColor(patternTime + 0.2)); 
+                    innerCore.material.emissive.set(getRainbowColor(patternTime + 0.2)).multiplyScalar(0.5);
+                }
+
                 this.renderer.render(this.scene, this.camera);
             }
         };
@@ -817,7 +1119,7 @@
             const gridColor = `rgb(${currentPalette[0][0]}, ${currentPalette[0][1]}, ${currentPalette[0][2]})`;
 
             gCtx.strokeStyle = `rgba(${currentPalette[0].join(',')}, 0.2)`;
-            gCtx.shadowColor = gridColor;
+            gCtx.shadowColor = `rgba(${currentPalette[0].join(',')}, 0.5)`; // DÜZELTME: Parlama renginin opaklığını azalt
             gCtx.shadowBlur = beatGlow;
 
             // Yatay çizgiler
@@ -844,7 +1146,7 @@
 
 
         // --- ARKA PLAN PARÇACIK ANİMASYONU ---
-        let particlesArray, hueShiftAngle = 0;
+        let particlesArray, shootingStars = [], hueShiftAngle = 0;
         class Particle {
             constructor() {
                 this.x = Math.random() * particleCanvas.width;
@@ -856,7 +1158,7 @@
             update() {
                 if (this.x > particleCanvas.width || this.x < 0) { this.speedX = -this.speedX; }
                 if (this.y > particleCanvas.height || this.y < 0) { this.speedY = -this.speedY; }
-                const speedMultiplier = isRunning ? (smoothedBPM / 120) : 1;
+                const speedMultiplier = (currentMode === 'realtime' && smoothedBPM > 0) ? (smoothedBPM / 120) : 1;
                 this.x += this.speedX * speedMultiplier;
                 this.y += this.speedY * speedMultiplier;
             }
@@ -865,6 +1167,27 @@
                 pCtx.beginPath();
                 pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 pCtx.fill();
+            }
+        }
+        // YENİ: Yıldız Kayması Efekti
+        class ShootingStar {
+            constructor() {
+                this.reset();
+                this.y = Math.random() * particleCanvas.height;
+            }
+            reset() {
+                this.x = Math.random() > 0.5 ? -50 : particleCanvas.width + 50;
+                this.y = Math.random() * particleCanvas.height * 0.6; // Ekranın üst %60'ında başlasın
+                this.len = Math.random() * 80 + 10;
+                this.speed = Math.random() * 5 + 4;
+                this.angle = Math.random() * 0.4 - 0.2;
+                if (this.x > particleCanvas.width) this.speed = -this.speed;
+            }
+            draw() {
+                const grad = pCtx.createLinearGradient(this.x, this.y, this.x + this.len * Math.cos(this.angle), this.y + this.len * Math.sin(this.angle));
+                grad.addColorStop(0, getRainbowColor(patternTime + this.x / particleCanvas.width, 0.6)); // DÜZELTME: Yıldız renginin opaklığını azalt
+                grad.addColorStop(1, "transparent");
+                pCtx.strokeStyle = grad; pCtx.lineWidth = 2; pCtx.beginPath(); pCtx.moveTo(this.x, this.y); pCtx.lineTo(this.x + this.len * Math.cos(this.angle), this.y + this.len * Math.sin(this.angle)); pCtx.stroke();
             }
         }
         function initParticles() {
@@ -882,7 +1205,7 @@
                                + ((particlesArray[a].y - particlesArray[b].y) * (particlesArray[a].y - particlesArray[b].y));
                     if (distance < (particleCanvas.width/7) * (particleCanvas.height/7)) {
                         opacityValue = 1 - (distance/20000);
-                        pCtx.strokeStyle = `rgba(213, 0, 249, ${opacityValue * 0.5})`;
+                        pCtx.strokeStyle = `rgba(213, 0, 249, ${opacityValue * 0.2})`; // DÜZELTME: Parçacık bağlantı opaklığını azalt
                         pCtx.lineWidth = 1;
                         pCtx.beginPath();
                         pCtx.moveTo(particlesArray[a].x, particlesArray[a].y);
@@ -893,28 +1216,44 @@
             }
         }
         function animateParticles() {
-            if (!settings.useParticles) { pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height); return; }
             pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
-            if (particlesArray) {
+            
+            // Yıldızları çiz ve güncelle
+            if (shootingStars.length > 0) {
+                shootingStars.forEach(star => {
+                    star.x += star.speed;
+                    star.draw();
+                    if (star.x < -100 || star.x > particleCanvas.width + 100) star.reset();
+                });
+            }
+
+            // Parçacıkları çiz ve güncelle
+            if (settings.useParticles && particlesArray) {
                 for (let i = 0; i < particlesArray.length; i++) particlesArray[i].update();
                 for (let i = 0; i < particlesArray.length; i++) particlesArray[i].draw();
                 connectParticles();
             }
-            if (!isRunning) {
+            if (currentMode === 'simulation' && !isPlaying) {
                 hueShiftAngle = (hueShiftAngle + 0.05) % 360;
                 bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(0.6) hue-rotate(${hueShiftAngle}deg)`;
             }
-            requestAnimationFrame(animateParticles);
+            // requestAnimationFrame(animateParticles); // Ana döngüye taşındı
         }
         
         // --- BAŞLANGIÇ ---
+        mainLoop(); // ANA ANİMASYON DÖNGÜSÜNÜ HEMEN BAŞLAT
         initializeWidget();
 
         // Giriş animasyonunun akıcı olması için parçacık motorunu hafif bir gecikmeyle başlat.
         // Bu, tarayıcının ilk animasyona odaklanmasını sağlar ve "kasılma" hissini ortadan kaldırır.
         setTimeout(() => {
             initParticles();
-            animateParticles();
+            // YENİ: 3 adet kayan yıldız oluştur
+            for(let i=0; i<3; i++) {
+                setTimeout(() => shootingStars.push(new ShootingStar()), i * 1500); // Farklı zamanlarda başlasınlar
+            }
+            resizeCanvas(); // Her şeyin doğru boyutlarda olduğundan emin ol
+            // animateParticles(); // Ana döngü zaten çalıştırıyor
         }, 500); // 500 milisaniye (yarım saniye) gecikme
     </script>
 </body>
