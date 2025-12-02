@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bekefendi Studio Pro - Visual Experience</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- YENİ: Faviconlar -->
+    <link id="favicon-default" rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔮</text></svg>">
+    <link id="favicon-playing" rel="alternate icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎶</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -14,6 +17,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         /* --- TEMEL AYARLAR --- */
+        /* YENİ: Özel Kaydırma Çubuğu */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2); border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
         * { box-sizing: border-box; }
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -28,10 +44,17 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: -7; /* Grid'in üzerinde olması için */
-            background: radial-gradient(circle at center, transparent 40%, black 100%);
-            opacity: var(--vignette-opacity, 0); /* DÜZELTME: CSS Değişkenini kullan */
-            transition: opacity 0.5s ease-out;
+            display: none; /* DÜZELTME: Kenar karartma/parlama efektini tamamen kaldır */
+        }
+        /* YENİ: Fareyi takip eden ışık efekti */
+        #mouse-spotlight {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -8; /* Grid'in arkasında, ana arka planın önünde */
+            background: radial-gradient(circle 600px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(120, 80, 200, 0.15), transparent 80%);
             pointer-events: none;
+            transition: background 0.2s ease-out; /* Yumuşak takip */
         }
 
         #grid-canvas {
@@ -49,11 +72,11 @@
         /* --- ARKA PLAN --- */
         #bg-layer {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #120524, #4a0e45, #15082b, #4a0e45);
+            background: linear-gradient(135deg, #02010a, #0a071c, #02010a, #100c24);
             background-size: 300% 300%;
-            filter: blur(40px) brightness(0.4); /* DÜZELTME: Parlaklığı daha da düşür */ z-index: -10;
+            filter: blur(40px) brightness(0.3); /* DÜZELTME: Gece modu için parlaklığı daha da düşür */ z-index: -10;
             transition: filter 0.5s ease-out;
-            animation: animatedGradient 25s ease infinite;
+            animation: animatedGradient 40s ease infinite; /* Animasyonu yavaşlat */
         }
         @keyframes animatedGradient {
             0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%}
@@ -67,7 +90,8 @@
         
         #particle-canvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -5; pointer-events: none; transition: opacity 0.5s;
+            z-index: -5; pointer-events: none;
+            transition: opacity 0.5s; /* DÜZELTME: Parçacık efektini geri getir */
         }
 
         .main-container {
@@ -80,7 +104,7 @@
         .visualizer-panel {
             flex: 2; /* Daha fazla yer kaplaması için flex değerini artır */ background: rgba(255, 255, 255, 0.02);
             backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 25px; box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+            border-radius: 25px; /* DÜZELTME: Kenar parlamasını kaldırmak için gölgeyi devre dışı bırak */
             position: relative; overflow: hidden;
             transition: transform 0.1s ease-out;
         }
@@ -94,6 +118,10 @@
             display: flex;
             gap: 5px;
         }
+        /* YENİ: Sinema modu için geçiş */
+        .icon-controls, .sc-tabs {
+            transition: opacity 0.5s ease-in-out;
+        }
         .control-btn {
             cursor: pointer; color: rgba(255,255,255,0.4);
             font-size: 1.1rem; transition: all 0.2s ease;
@@ -101,10 +129,15 @@
             width: 40px; height: 40px;
             display: flex; justify-content: center; align-items: center;
         }
+        /* YENİ: Buton tıklama animasyonu */
+        .control-btn:active {
+            transform: scale(0.9) !important; /* Hover'ı ezer */
+            transition: transform 0.05s ease;
+        }
         .control-btn:hover { color: rgba(255,255,255,0.9); transform: scale(1.1); background: rgba(0,0,0,0.2); }
 
         /* --- AYARLAR PANELİ --- */
-        #settings-panel {
+        #settings-panel { /* DÜZELTME: Mobil için de kullanılacak */
             position: absolute;
             top: 70px;
             right: 20px;
@@ -141,25 +174,27 @@
 
         #canvas-visualizer, #canvas-3d {
             position: absolute; top: 0; left: 0;
-            display: block; width: 100%; height: 100%;
-            transition: opacity 0.3s ease-in-out;
+            display: block; width: 100%; height: 100%; 
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out, filter 0.4s ease-in-out; /* YENİ: Gelişmiş geçiş */
         }
 
         /* --- ŞARKI BİLGİSİ --- */
         .info-wrapper {
-            position: absolute; top: 50%; left: 50%; width: 80%;
-            transform: translate(-50%, -50%); text-align: center;
+            position: absolute;
+            top: 65px; /* DÜZELTME: Kontrol butonlarının altına konumlandır */
+            left: 20px; /* DÜZELTME: Kontrol butonlarıyla aynı hizada başlat */
+            width: auto; max-width: 350px; /* Genişliği ayarla */
             z-index: 15; pointer-events: none;
         }
         .track-title {
-            font-size: 2.5rem; font-weight: 800; color: #fff; margin: 0;
+            font-size: 1.8rem; font-weight: 800; color: #fff; margin: 0; /* DÜZELTME: Boyutu küçült */
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(213, 0, 249, 0.5);
             white-space: nowrap; overflow: hidden;
             transition: text-shadow 0.1s ease-out;
         }
         .track-title.scrolling > span {
             display: inline-block; padding-left: 100%;
-            animation: marquee 15s linear infinite;
+            animation: marquee 10s linear infinite; /* DÜZELTME: Kaydırma hızını artır */
         }
         @keyframes marquee {
             0%   { transform: translateX(0); } 100% { transform: translateX(-100%); }
@@ -167,16 +202,62 @@
         .track-title > span { display: inline-block; }
         .track-artist {
             font-size: 1rem; font-weight: 400; color: rgba(255,255,255,0.7); margin-top: 10px;
-            letter-spacing: 2px; text-transform: uppercase;
+            letter-spacing: 1px; text-transform: uppercase; /* DÜZELTME: Harf aralığını azalt */
             text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
             transition: text-shadow 0.1s ease-out;
         }
 
+        /* YENİ: ŞARKI KONTROLLERİ */
+        .playback-controls {
+            position: absolute;
+            top: 15px; /* DÜZELTME: Sağdaki ikonlarla aynı hizada, üstte konumlandır */
+            left: 20px; /* DÜZELTME: Sol köşeye yerleştir */
+            z-index: 22;
+            display: flex;
+            gap: 5px; /* DÜZELTME: Diğer ikonlarla aynı boşluk değeri */
+            align-items: center;
+            transition: opacity 0.5s ease-in-out; /* Sinema modu için */
+        }
+        .playback-btn.play-btn { /* Oynat butonu daha büyük */
+            /* DÜZELTME: Diğer butonlarla aynı boyutta olsun */
+            width: 40px; height: 40px;
+            font-size: 1.1rem;
+        }
+        /* YENİ: Ses Kontrolü */
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 10px; /* DÜZELTME: Butonlardan biraz ayır */
+        }
+        .volume-control .control-btn {
+            width: 35px; height: 35px; font-size: 1rem;
+        }
+        #volume-slider {
+            width: 80px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(0,0,0,0.3);
+            height: 4px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
         /* --- KONTROLLER --- */
         .controls-wrapper {
-            position: absolute; bottom: 30px; left: 0; width: 100%;
-            text-align: center; z-index: 20; pointer-events: none;
+            position: absolute; bottom: 30px; right: 30px;
+            width: auto;
+            text-align: right; z-index: 20;
+            pointer-events: none;
+            transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1); /* YENİ: Yumuşak geçiş animasyonu */
         }
+        /* YENİ: Canlı mod aktifken butonun sol alta geçmesini sağlayan stil */
+        .controls-wrapper.live-active {
+            right: auto;
+            left: 30px;
+        }
+
         .live-btn {
             pointer-events: auto; background: linear-gradient(90deg, #7b1fa2 0%, #4a148c 100%);
             color: white; border: none; padding: 12px 30px; border-radius: 50px;
@@ -185,6 +266,15 @@
             display: inline-flex; align-items: center; gap: 10px; transition: all 0.2s;
         }
         .live-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(123, 31, 162, 0.6); }
+        /* YENİ: Canlı modda nabız efekti */
+        .live-btn.pulsating-live {
+            animation: pulseGlow 2s infinite;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(211, 47, 47, 0.4); }
+            50% { box-shadow: 0 0 35px rgba(211, 47, 47, 0.8); }
+        }
+
         .hint {
             margin-top: 10px; font-size: 0.8rem; color: rgba(255,255,255,0.4);
             pointer-events: auto; background: rgba(0,0,0,0.5);
@@ -192,20 +282,56 @@
         }
         .explanation-text {
             margin-top: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.5);
-            max-width: 380px; /* Genişliğin çok artmasını önle */
+            max-width: 350px; /* Genişliğin çok artmasını önle */
             margin-left: auto; margin-right: auto;
             line-height: 1.4;
+        }
+        /* YENİ: Akıllı ipucu için gizleme stili */
+        .hint.hidden, .explanation-text.hidden {
+            transition: opacity 0.5s, transform 0.5s;
+            opacity: 0; transform: translateY(-10px); pointer-events: none;
         }
 
         /* --- SAĞ PANEL --- */
         .sc-panel {
-            flex: 0 0 380px; /* Sabit genişlik, büyümesin veya küçülmesin */
-            max-width: 380px; /* Genişliği sınırla */
-            background: rgba(10, 10, 10, 0.9); border-radius: 25px;
-            overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05);
+            flex: 0 0 380px; max-width: 380px;
+            background: rgba(255, 255, 255, 0.05); /* Yarı saydam beyaz arka plan */
+            backdrop-filter: blur(30px); /* Arkadaki içeriği bulanıklaştır */
+            border: 1px solid rgba(255, 255, 255, 0.1); /* İnce, parlak bir kenarlık */
+            border-radius: 25px; overflow: hidden;
             display: flex; flex-direction: column;
+            /* DÜZELTME: Kenar parlamasını kaldırmak için gölgeyi devre dışı bırak */
         }
-        #sc-frame { width: 100%; height: 100%; border: none; }
+        /* YENİ: Sekme Butonları */
+        .sc-tabs { display: flex; padding: 10px; background: rgba(0,0,0,0.2); }
+        .sc-tab-btn {
+            flex: 1; text-align: center; padding: 10px;
+            color: rgba(255,255,255,0.5); background: transparent;
+            border: none; border-radius: 15px; cursor: pointer;
+            font-family: 'Inter', sans-serif; font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .sc-tab-btn.active { color: #fff; background: rgba(255,255,255,0.1); }
+        /* YENİ: Buton tıklama animasyonu */
+        .sc-tab-btn:active {
+            transform: scale(0.95);
+            transition: transform 0.05s ease;
+        }
+        .sc-tab-btn:hover:not(.active) { background: rgba(255,255,255,0.05); }
+
+        /* YENİ: iframe'leri tutan konteyner */
+        .sc-content { flex-grow: 1; position: relative; }
+
+        #sc-frame { 
+            width: 100%; height: 100%; border: none; 
+            transition: opacity 0.4s ease-in-out; /* YENİ: Yumuşak geçiş */
+        }
+        /* YENİ: İkinci iframe (Top Listesi) */
+        #sc-topsongs-frame {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; border: none;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+        }
         #file-upload { display: none; }
 
         /* --- MOBİL UYUMLULUK --- */
@@ -220,6 +346,27 @@
             .controls-wrapper, #settings-panel { display: none; } /* Ayarları mobilde gizle */
         }
 
+        /* YENİ: Telefonlar için özel iyileştirmeler */
+        @media (max-width: 480px) {
+            .visualizer-panel { flex: 0 0 250px; } /* Görselleştirici yüksekliğini azalt */
+            .sc-panel { min-height: 450px; } /* DÜZELTME: SC paneli yüksekliğini ayarla */
+            .track-title { font-size: 1.2rem; }
+            .track-artist { font-size: 0.7rem; }
+            .info-wrapper { top: 50%; } /* Başlığı ortala */
+            .sc-tabs {
+                padding: 5px; /* Sekme alanını küçült */
+            }
+            .controls-wrapper { /* Kontrolleri tekrar görünür yap ve ortaya al */
+                display: block;
+                bottom: 15px;
+            }
+            .icon-controls { /* İkonları altta, ortada göster */
+                top: auto; bottom: 70px; left: 50%; transform: translateX(-50%);
+                background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px;
+            }
+            #settings-panel { display: block; } /* Ayarlar panelini tekrar aktif et */
+        }
+
         /* --- YÜKLEME EKRANI --- */
         #loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -227,6 +374,11 @@
             justify-content: center; align-items: center;
             transition: opacity 0.7s ease, visibility 0.7s ease;
             opacity: 1; visibility: visible;
+            flex-direction: column; /* YENİ: Metin için */
+        }
+        /* YENİ: Yükleme ekranı metni */
+        #loading-text {
+            margin-top: 20px; color: rgba(255,255,255,0.4); font-size: 0.9rem;
         }
         #loader.hidden { opacity: 0; visibility: hidden; }
         .spinner {
@@ -234,13 +386,25 @@
             border-top-color: #d500f9; border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+        /* YENİ: Sinema Modu (Arayüzü gizleme) */
+        body.cinema-mode .icon-controls,
+        body.cinema-mode .sc-tabs,
+        body.cinema-mode .playback-controls,
+        body.cinema-mode .volume-control { /* YENİ: Ses kontrolünü de gizle */
+            opacity: 0;
+            pointer-events: none;
+        }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="loader"><div class="spinner"></div></div>
+    <div id="loader">
+        <div class="spinner"></div>
+        <div id="loading-text">Initializing...</div>
+    </div>
     <canvas id="grid-canvas"></canvas>
+    <div id="mouse-spotlight"></div>
     <canvas id="particle-canvas"></canvas>
     <div id="bg-layer"></div>
 
@@ -269,7 +433,7 @@
                 </div>
                 <div class="setting-item">
                     <label for="bg-blur">Arka Plan Bulanıklığı</label>
-                    <input type="range" id="bg-blur" min="0" max="80" value="40" step="1">
+                    <input type="range" id="bg-blur" min="0" max="80" value="25" step="1">
                 </div>
                 <div class="setting-item">
                     <div class="toggle-switch">
@@ -287,6 +451,26 @@
                 <p class="track-artist" id="track-artist">Ready to play</p>
             </div>
 
+            <!-- YENİ: ŞARKI KONTROLLERİ -->
+            <div id="playback-controls" class="playback-controls">
+                <div id="prev-btn" class="control-btn playback-btn" title="Önceki Şarkı">
+                    <i class="fa-solid fa-backward-step"></i>
+                </div>
+                <div id="play-pause-btn" class="control-btn playback-btn play-btn" title="Oynat/Durdur (Boşluk)">
+                    <i class="fa-solid fa-play"></i>
+                </div>
+                <div id="next-btn" class="control-btn playback-btn" title="Sonraki Şarkı">
+                    <i class="fa-solid fa-forward-step"></i>
+                </div>
+                <!-- YENİ: SES KONTROLÜ -->
+                <div class="volume-control">
+                    <div id="volume-btn" class="control-btn playback-btn" title="Sesi Kapat/Aç">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </div>
+                    <input type="range" id="volume-slider" min="0" max="100" value="80" title="Ses Seviyesi">
+                </div>
+            </div>
+
             <div class="controls-wrapper">
                 <button class="live-btn" id="start-btn">
                     <i class="fa-solid fa-broadcast-tower"></i> CANLI SENKRONİZASYONU BAŞLAT
@@ -301,15 +485,25 @@
         </div>
 
         <div class="sc-panel">
-            <iframe id="sc-frame" 
-                    scrolling="auto" frameborder="no" allow="autoplay" 
-                    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/bekefendi&color=%237b1fa2&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=false">
-            </iframe>
+            <div class="sc-tabs">
+                <button id="tab-profile" class="sc-tab-btn active">Profil</button>
+                <button id="tab-topsongs" class="sc-tab-btn">Remixler</button>
+            </div>
+            <div class="sc-content">
+                <iframe id="sc-frame" 
+                        scrolling="auto" frameborder="no" allow="autoplay" 
+                        src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/bekefendi&color=%237b1fa2&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=false">
+                </iframe>
+                <iframe id="sc-topsongs-frame"
+                        scrolling="auto" frameborder="no" allow="autoplay"
+                        src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/bekefendi/sets/top-remixes-by-bekefendi&color=%237b1fa2&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=false">
+                </iframe>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- DOM ELEMENTLERİ ---
+        // --- DOM ELEMENTLERİ (DİNAMİK OLANLAR HARİÇ) ---
         const loader = document.getElementById('loader');
         const canvas = document.getElementById('canvas-visualizer');
         const ctx = canvas.getContext('2d');
@@ -330,8 +524,25 @@
         const effectIntensitySlider = document.getElementById('effect-intensity');
         const bgBlurSlider = document.getElementById('bg-blur');
         const particleToggle = document.getElementById('particle-toggle');
+        // YENİ: SoundCloud Sekme Elementleri
+        const hintText = document.querySelector('.hint');
+        const explanationText = document.querySelector('.explanation-text');
+        const scTopSongsFrame = document.getElementById('sc-topsongs-frame');
+        // YENİ: Şarkı Kontrol Butonları
+        const prevBtn = document.getElementById('prev-btn');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const nextBtn = document.getElementById('next-btn');
+        // YENİ: Ses Kontrolü Elementleri
+        const volumeBtn = document.getElementById('volume-btn');
+        const volumeSlider = document.getElementById('volume-slider');
+        const tabProfile = document.getElementById('tab-profile');
+        const tabTopSongs = document.getElementById('tab-topsongs');
  
-        // --- GLOBAL DEĞİŞKENLER ---
+        // --- DİNAMİK GLOBAL DEĞİŞKENLER ---
+        // DÜZELTME: Bu değişkenler sanatçı değiştirildiğinde yeniden atanacak.
+        let iframeElement;
+        let widget;
+
         let audioContext, analyser;
         let currentMode = 'simulation'; // 'simulation' veya 'realtime'
         let isPlaying = false; // SoundCloud widget'ının durumunu takip eder
@@ -340,13 +551,49 @@
         let rotationAngle = 0;
         let simulationBeatInterval;
         let trackChangeInterval;
+        // YENİ: Profesyonel detaylar için değişkenler
+        let cinemaModeTimeout;
+        const cinemaModeDelay = 3000; // 3 saniye sonra sinema modu
+        const originalTitle = document.title;
+        const faviconDefault = document.getElementById('favicon-default');
+        const faviconPlaying = document.getElementById('favicon-playing');
+
+        // --- AYAR YÖNETİMİ ---
 
         // --- AYARLAR (KULLANICI KONTROLLERİ) ---
         let settings = {
             effectIntensity: 1,
-            backgroundBlur: 40,
+            backgroundBlur: 25,
             useParticles: true,
+            volume: 80 // YENİ: Ses seviyesi için varsayılan değer
         };
+
+        // YENİ: Ayarları kaydetme ve yükleme
+        function saveSettings() {
+            localStorage.setItem('bekefendiStudioSettings', JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('bekefendiStudioSettings');
+            if (savedSettings) {
+                // DÜZELTME: Yeni ayarlar eklendiğinde hata olmaması için mevcut ayarlar üzerine yaz.
+                Object.assign(settings, JSON.parse(savedSettings));
+
+                // UI elemanlarını güncelle
+                effectIntensitySlider.value = settings.effectIntensity;
+                bgBlurSlider.value = settings.backgroundBlur;
+                particleToggle.checked = settings.useParticles;
+                // YENİ: Kaydedilmiş ses seviyesini yükle
+                if (settings.volume !== undefined) {
+                    volumeSlider.value = settings.volume;
+                    updateVolumeIcon(settings.volume);
+                }
+
+                // Ayarları uygula
+                particleCanvas.style.opacity = settings.useParticles ? '1' : '0';
+                // DÜZELTME: `bgLayer.style.filter` ayarı mainLoop içinde dinamik olarak yapıldığı için buradan kaldırıldı.
+            }
+        }
 
         // --- SANATÇI VE STİL YÖNETİMİ ---
         const artists = [
@@ -382,18 +629,41 @@
         };
 
         // --- SOUNDCLOUD WIDGET ---
-        var iframeElement = document.querySelector('#sc-frame');
-        var widget;
         function initializeWidget() {
-            widget = SC.Widget(iframeElement);
+            widget = SC.Widget(iframeElement); // Global widget değişkenini ata
             widget.bind(SC.Widget.Events.READY, function() {
                 // Yükleyiciyi gizle ve ana animasyon döngüsünü başlat
-                loader.classList.add('hidden'); 
+                loader.classList.add('hidden');
+                // DÜZELTME: Yeni widget için olayları ve kontrolü yeniden başlat
                 widget.unbind(SC.Widget.Events.PLAY); widget.unbind(SC.Widget.Events.PAUSE); widget.unbind(SC.Widget.Events.FINISH);
-                widget.bind(SC.Widget.Events.PLAY, updateTrackInfo);
-                widget.bind(SC.Widget.Events.PLAY, () => { isPlaying = true; startSimulationBeat(); });
-                widget.bind(SC.Widget.Events.PAUSE, () => { isPlaying = false; stopSimulationBeat(); });
-                widget.bind(SC.Widget.Events.FINISH, () => setTimeout(updateTrackInfo, 1000));
+                widget.bind(SC.Widget.Events.PLAY, () => {
+                    isPlaying = true;
+                    startSimulationBeat();
+                    playPauseBtn.querySelector('i').className = 'fa-solid fa-pause'; // İkonu değiştir
+                    updateTrackInfo(); // Başlık ve favicon'u hemen güncelle
+                });
+                widget.bind(SC.Widget.Events.PAUSE, () => {
+                    isPlaying = false;
+                    stopSimulationBeat();
+                    // YENİ: Başlığı ve favicon'u sıfırla
+                    playPauseBtn.querySelector('i').className = 'fa-solid fa-play'; // İkonu değiştir
+                    document.title = originalTitle;
+                    faviconPlaying.remove();
+                    document.head.appendChild(faviconDefault);
+                });
+                widget.bind(SC.Widget.Events.FINISH, () => {
+                    setTimeout(updateTrackInfo, 1000);
+                    // YENİ: Başlığı ve favicon'u sıfırla
+                    playPauseBtn.querySelector('i').className = 'fa-solid fa-play'; // İkonu değiştir
+                    document.title = originalTitle;
+                    faviconPlaying.remove();
+                    document.head.appendChild(faviconDefault);
+                });
+                // YENİ: Ses seviyesini ayarla ve widget'tan gelen değere göre slider'ı güncelle
+                widget.setVolume(volumeSlider.value);
+                widget.getVolume((volume) => volumeSlider.value = volume);
+
+                startTrackChangeInterval(); // DÜZELTME: Şarkı değişikliği kontrolünü yeniden başlat
             });
         }
 
@@ -403,7 +673,15 @@
                 const titleSpan = titleEl.querySelector('span');
                 titleSpan.innerText = sound.title;
                 artistEl.innerText = sound.user.username;
-                titleEl.classList.toggle('scrolling', titleSpan.offsetWidth > titleEl.offsetWidth);
+
+                // YENİ: Dinamik sayfa başlığı ve favicon
+                if (isPlaying) {
+                    document.title = `▶ ${sound.title} - ${sound.user.username}`;
+                    faviconDefault.remove();
+                    document.head.appendChild(faviconPlaying);
+                }
+                // DÜZELTME: Sadece metin taşıyorsa kaydırma sınıfını ekle.
+                titleEl.classList.toggle('scrolling', titleSpan.scrollWidth > titleEl.clientWidth);
                 
                 const bgAfter = document.querySelector('#bg-layer::after');
 
@@ -438,37 +716,75 @@
 
         artistSwitcher.onclick = function(event) {
             event.stopPropagation();
-            currentArtistIndex = (currentArtistIndex + 1) % artists.length;
-            const newArtist = artists[currentArtistIndex];
-            loader.classList.remove('hidden');
-            const baseUrl = "https://w.soundcloud.com/player/?url=";
-            const params = "&color=%237b1fa2&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=false";
-            iframeElement.src = baseUrl + newArtist.url + params;
-            iframeElement.onload = initializeWidget;
+
+            // --- DÜZELTME: Mevcut durumu tamamen sıfırla ---
+            // 1. Mevcut şarkı bilgisi kontrolünü durdur
             if (trackChangeInterval) {
                 clearInterval(trackChangeInterval);
                 trackChangeInterval = null;
             }
+            // 2. Widget referansını ve oynatma durumunu temizle
+            widget = null;
+            stopSimulationBeat();
+            isPlaying = false;
+            // 3. Arayüzü sıfırla
+            titleEl.querySelector('span').innerText = 'Loading...';
+            artistEl.innerText = '...';
+            titleEl.classList.remove('scrolling'); // DÜZELTME: Kaydırma efektini sıfırla
+            recordImg.src = defaultImageBase64; // Kapak resmini sıfırla
+
+            iframeElement.style.opacity = '0'; // YENİ: Yumuşak geçiş için eskiyi gizle
+            // --- DÜZELTME: iframe'i tamamen yeniden oluştur ---
+            currentArtistIndex = (currentArtistIndex + 1) % artists.length;
+            const newArtist = artists[currentArtistIndex];
+            loader.classList.remove('hidden');
+
+            const scContent = document.querySelector('.sc-content');
+            const oldIframe = document.getElementById('sc-frame');
+            if (oldIframe) oldIframe.remove(); // Eski iframe'i DOM'dan kaldır
+
+            const newIframe = document.createElement('iframe');
+            newIframe.id = 'sc-frame';
+            newIframe.scrolling = 'auto';
+            newIframe.frameBorder = 'no';
+            newIframe.allow = 'autoplay';
+            const baseUrl = "https://w.soundcloud.com/player/?url=";
+            const params = "&color=%237b1fa2&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=false";
+            // DÜZELTME: Sanatçı değiştirildiğinde her zaman standart liste görünümünü (`visual=false`) kullan.
+            newIframe.src = baseUrl + newArtist.url + params;
+            newIframe.onload = () => {
+                initializeWidget();
+                newIframe.style.opacity = '1'; // YENİ: Yüklendiğinde yavaşça göster
+            };
+            scContent.prepend(newIframe); // Yeni iframe'i konteynerin başına ekle
+            iframeElement = newIframe; // Global referansı güncelle
         }
 
         styleSwitcher.onclick = function(event) {
             event.stopPropagation();
-            canvas.style.opacity = '0';
-            canvas3D.style.opacity = '0';
+            // YENİ: Gelişmiş geçiş animasyonu
+            const currentCanvas = visualizerStyles[currentStyleIndex].name.startsWith('3d-') ? canvas3D : canvas;
+            currentCanvas.style.opacity = '0';
+            currentCanvas.style.transform = 'scale(0.95) ';
+            currentCanvas.style.filter = 'blur(10px)';
+
             setTimeout(() => {
                 currentStyleIndex = (currentStyleIndex + 1) % visualizerStyles.length;
                 const newStyle = visualizerStyles[currentStyleIndex];
                 styleSwitcher.querySelector('i').className = newStyle.icon;
+                
+                const nextCanvas = newStyle.name.startsWith('3d-') ? canvas3D : canvas;
+                const otherCanvas = newStyle.name.startsWith('3d-') ? canvas : canvas3D;
+                
+                otherCanvas.style.display = 'none';
+                nextCanvas.style.display = 'block';
+                nextCanvas.style.opacity = '1';
+                nextCanvas.style.transform = 'scale(1)';
+                nextCanvas.style.filter = 'blur(0px)';
+
                 if (newStyle.name.startsWith('3d-')) {
-                    canvas.style.display = 'none';
-                    canvas3D.style.display = 'block';
                     if (!three.initialized) three.init();
-                } else {
-                    canvas.style.display = 'block';
-                    canvas3D.style.display = 'none';
                 }
-                canvas.style.opacity = '1';
-                canvas3D.style.opacity = '1';
             }, 300);
         }
 
@@ -481,15 +797,87 @@
                 settingsPanel.classList.remove('visible');
             }
         };
-        effectIntensitySlider.oninput = (e) => settings.effectIntensity = parseFloat(e.target.value);
+        effectIntensitySlider.oninput = (e) => {
+            settings.effectIntensity = parseFloat(e.target.value);
+            saveSettings();
+        };
         bgBlurSlider.oninput = (e) => {
             settings.backgroundBlur = parseFloat(e.target.value);
             if (currentMode === 'simulation') bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(0.6) hue-rotate(${hueShiftAngle}deg)`;
+            saveSettings();
         };
         particleToggle.onchange = (e) => {
             settings.useParticles = e.target.checked;
             particleCanvas.style.opacity = settings.useParticles ? '1' : '0';
+            saveSettings();
         };
+
+        // YENİ: SoundCloud Sekme Geçişleri
+        tabProfile.onclick = () => {
+            tabProfile.classList.add('active');
+            tabTopSongs.classList.remove('active');
+            scTopSongsFrame.style.opacity = '0';
+            scTopSongsFrame.style.visibility = 'hidden';
+        };
+        tabTopSongs.onclick = () => {
+            tabTopSongs.classList.add('active');
+            tabProfile.classList.remove('active');
+            scTopSongsFrame.style.opacity = '1';
+            scTopSongsFrame.style.visibility = 'visible';
+        };
+
+        // YENİ: Şarkı Kontrol Butonları Olayları
+        playPauseBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (widget) widget.toggle();
+        };
+        nextBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (widget) widget.next();
+        };
+        prevBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (widget) widget.prev();
+        };
+
+        // YENİ: Ses Kontrolü Olayları
+        volumeSlider.oninput = (e) => {
+            if (widget) widget.setVolume(e.target.value);
+            const newVolume = parseInt(e.target.value, 10);
+            updateVolumeIcon(newVolume);
+            saveVolume(newVolume); // YENİ: Sesi kaydet
+        };
+        volumeBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (volumeSlider.value > 0) {
+                volumeSlider.dataset.lastVolume = volumeSlider.value; // Son ses seviyesini kaydet
+                volumeSlider.value = 0;
+            } else {
+                volumeSlider.value = volumeSlider.dataset.lastVolume || 80; // Kaydedilmiş seviyeye veya varsayılana dön
+            }
+            if (widget) widget.setVolume(volumeSlider.value);
+            const newVolume = parseInt(volumeSlider.value, 10);
+            updateVolumeIcon(newVolume);
+            saveVolume(newVolume); // YENİ: Sesi kaydet
+        };
+        function saveVolume(volume) {
+            settings.volume = volume;
+            saveSettings();
+        }
+        function updateVolumeIcon(volume) {
+            const icon = volumeBtn.querySelector('i');
+            if (volume == 0) {
+                icon.className = 'fa-solid fa-volume-xmark';
+            } else if (volume < 50) {
+                icon.className = 'fa-solid fa-volume-low';
+            } else {
+                icon.className = 'fa-solid fa-volume-high';
+            }
+        }
+        // --- YENİ: Profesyonel Etkileşimler ---
+        document.addEventListener('mousemove', handleUserActivity);
+        document.addEventListener('keydown', handleKeyboardShortcuts);
+
         
         // --- SİSTEM BAŞLATMA / DURDURMA ---
         startBtn.onclick = async function() { 
@@ -504,10 +892,14 @@
                     alert("HATA: 'Sesi Paylaş' kutucuğunu işaretlemedin!");
                     return;
                 }
+                // İpucu metinlerini gizle
+                hintText.classList.add('hidden');
+                explanationText.classList.add('hidden');
                 stopSimulationBeat(); // Simülasyonu durdur
                 currentMode = 'realtime';
                 startBtn.innerHTML = '<i class="fa-solid fa-stop-circle"></i> CANLIYI DURDUR';
-                startBtn.style.background = "#d32f2f"; // Kırmızı tonu
+                startBtn.style.background = "#d32f2f";
+                startBtn.classList.add('pulsating-live'); // YENİ: Nabız efektini başlat
                 stream.getTracks()[0].onended = () => stopSystem();
                 resizeCanvas();
                 setupAudioAnalysis(stream);
@@ -520,7 +912,12 @@
             startBtn.innerHTML = '<i class="fa-solid fa-broadcast-tower"></i> CANLI SENKRONİZASYONU BAŞLAT';
             startBtn.disabled = false;
             startBtn.style.background = "linear-gradient(90deg, #7b1fa2 0%, #4a148c 100%)";
+            startBtn.classList.remove('pulsating-live'); // YENİ: Nabız efektini durdur
             
+            // İpucu metinlerini tekrar göster
+            hintText.classList.remove('hidden');
+            explanationText.classList.remove('hidden');
+
             // DÜZELTME: Yumuşak geçiş için arka planı sıfırla
             const bgAfter = document.querySelector('#bg-layer::after');
             bgLayer.style.setProperty('--bg-image-url', 'none');
@@ -575,9 +972,8 @@
         function startSimulationBeat() {
             if (simulationBeatInterval || currentMode !== 'simulation' || !isPlaying) return;
             const bpm = 120; // Ortalama bir BPM değeri
-            const interval = 60000 / bpm;
+            const interval = 60000 / bpm; // Bu interval artık sadece şok dalgası için kullanılacak
             simulationBeatInterval = setInterval(() => {
-                beatIntensity = 1; // Vuruş anında enerjiyi 1 yap
                 if (visualizerStyles[currentStyleIndex].name === 'pulse') createShockwave(150);
             }, interval);
         }
@@ -604,8 +1000,8 @@
         function mainLoop() {
             let trebleAvg = 0;
             requestAnimationFrame(mainLoop);
-
-            let dataArray = null;
+            
+            let dataArray = null; // DÜZELTME: Bu satırın yeri yanlış. Aşağıya taşındı.
             let bassAvg = 0;
             const now = Date.now();
 
@@ -633,35 +1029,40 @@
                     beatIntensity = 1;
                     if (visualizerStyles[currentStyleIndex].name === 'pulse') createShockwave(bassAvg);
                 }
-            } else { // YENİ: Estetik Desen Simülasyonu
-                patternTime += 0.01;
-                
-                // DEĞİŞİKLİK: "Patlama" efekti yerine sakin bir "nefes alma" efekti.
-                if (isPlaying) {
-                    beatIntensity = Math.sin(patternTime * 2) * 0.5 + 0.5; // 0 ile 1 arasında yumuşakça salınır.
-                } else {
-                    beatIntensity *= 0.95; // Müzik durduğunda efekti yavaşça söndür.
-                }
+                // DÜZELTME: Gerçek zamanlı modda 2D çizim fonksiyonlarını burada çağır.
+                // Bu, ses verisinin görselleştiricilere doğru şekilde aktarılmasını sağlar.
+                drawFrame(dataArray, isPlaying, beatIntensity * settings.effectIntensity);
 
-                // 3D Küre için hala sahte dataArray gerekiyor
-                if (visualizerStyles[currentStyleIndex].name.startsWith('3d-')) {
+            } else { // DÜZELTME: Yumuşatılmış Estetik Desen Simülasyonu
+                patternTime += 0.01;
+
+                // DÜZELTME: "Kalp atışı" yerine yumuşak "nefes alma" efekti.
+                // Müzik çalıyorsa, beatIntensity sinüs dalgasıyla 0 ve 1 arasında yumuşakça salınır.
+                const targetIntensity = isPlaying ? (Math.sin(patternTime * 2) * 0.5 + 0.5) : 0;
+                beatIntensity += (targetIntensity - beatIntensity) * 0.1; // Daha hızlı tepki için 0.02'den 0.1'e yükseltildi.
+
+                // DÜZELTME: dataArray'i burada, koşullu bloklardan önce sıfırla.
+                dataArray = null;
+
+                const currentStyleName = visualizerStyles[currentStyleIndex].name;
+
+                if (currentStyleName.startsWith('3d-')) {
+                    // DÜZELTME: 3D modundayken, 2D canvas'ı temizleme ve dataArray'i null yapma.
+                    // Her zaman sahte veri oluşturarak 3D motorunun çalışmasını sağla.
                     const bufferLength = 128;
                     dataArray = new Uint8Array(bufferLength);
                     for (let i = 0; i < bufferLength; i++) {
                         const a = Math.sin(patternTime * 2 + i * 0.2) * 0.5 + 0.5;
                         dataArray[i] = a * 100 + beatIntensity * 150;
                     }
-                    bassAvg = dataArray[0] || 0;
+                    bassAvg = (Math.sin(patternTime * 2) * 0.5 + 0.5) * 150;
                 } else {
-                    // Diğer stiller için doğrudan canvas'a çizim yap
+                    // DÜZELTME: 2D modundayken dataArray'i null yap ve 2D çizimlerini gerçekleştir.
                     dataArray = null; 
-                    bassAvg = (Math.sin(patternTime * 2) * 0.5 + 0.5) * 150 + beatIntensity * 100;
-                    
+                    bassAvg = (Math.sin(patternTime * 2) * 0.5 + 0.5) * 150;
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    const style = visualizerStyles[currentStyleIndex].name;
-                    titleEl.style.opacity = artistEl.style.opacity = (style === 'circle' || style === 'pulse') ? '1' : '0';
-
-                    switch (style) {
+                    titleEl.style.opacity = artistEl.style.opacity = (currentStyleName === 'circle' || currentStyleName === 'pulse') ? '1' : '0';
+                    switch (currentStyleName) {
                         case 'circle':
                             drawSimCirclePattern(patternTime, beatIntensity);
                             drawRecordPlayer(isPlaying);
@@ -682,26 +1083,23 @@
             // Renkleri yumuşakça hedefe doğru ilerlet
             for(let i=0; i<2; i++) for(let j=0; j<3; j++) currentPalette[i][j] += (targetPalette[i][j] - currentPalette[i][j]) * 0.02;
 
-            // DÜZELTME: Vuruş enerjisini her zaman azalt. Bu, efektlerin takılı kalmasını önler.
-            if (currentMode === 'realtime') beatIntensity *= 0.92;
+            // DÜZELTME: Vuruş enerjisini her zaman azalt. Bu, efektlerin takılı kalmasını önler. (Koşul dışına taşındı)
+            beatIntensity *= 0.92;
 
             // --- VURUŞ ENERJİSİNE DAYALI EFEKTLER (AYARLANABİLİR) ---
             const intensity = settings.effectIntensity;
             const panelScale = 1 + (beatIntensity * 0.015 * intensity);
-            vizPanel.style.transform = `scale(${panelScale})`;
-            let brightness = 0.6 + (bassAvg / 255) * 1.4 + (beatIntensity * 0.15 * intensity);
-            document.body.style.setProperty('--vignette-opacity', String(beatIntensity * 0.6 * intensity));
-            let hueRotate = (bassAvg / 1.5);
+            vizPanel.style.transform = `scale(${panelScale})`; 
+            // DÜZELTME: Parlaklık ve renk değişimini daha yumuşak ve profesyonel hale getir.
+            let brightness = 0.3 + (bassAvg / 255) * 0.3 + (beatIntensity * 0.1 * intensity); // Gece modu için parlaklık tepkisini azalt.
+            document.body.style.setProperty('--vignette-opacity', String(beatIntensity * 0.3 * intensity)); // DÜZELTME: Köşe karartma efektini azalt
+            let hueRotate = (bassAvg / 4); // Renk değişim hızını yavaşlat.
             bgLayer.style.filter = `blur(${settings.backgroundBlur}px) brightness(${brightness}) hue-rotate(${hueRotate}deg)`;
             const textGlow = (bassAvg / 255) * 25;
             titleEl.style.textShadow = `0 0 ${10 + textGlow}px rgba(255, 255, 255, 0.7), 0 0 ${20 + textGlow * 1.5}px rgba(213, 0, 249, 0.5)`;
             artistEl.style.textShadow = `0 0 ${2 + textGlow * 0.2}px rgba(255, 255, 255, 0.5)`;
 
             // Çizim fonksiyonlarını çağır
-            // Simülasyon modunda çizim yukarıda switch-case içinde yapılıyor.
-            if (currentMode === 'realtime') {
-                drawFrame(dataArray, isPlaying, beatIntensity * intensity);
-            }
             drawGrid(beatIntensity * intensity);
             animateParticles(); // Parçacık animasyonunu ana döngüden çağır
             if (three.initialized) three.update(dataArray, beatIntensity * intensity, bassAvg, trebleAvg);
@@ -860,15 +1258,25 @@
             const centerX = canvas.width / 2, centerY = canvas.height / 2;
             const beatScale = 1 + beat * 0.2;
             ctx.lineWidth = 4;
-            for (let i = 1; i < 5; i++) {
-                const radius = (100 + i * 40 + Math.sin(t * 2 + i) * 10) * beatScale;
-                const opacity = 0.3 + (Math.sin(t * 3 + i * 0.5) * 0.5 + 0.5) * 0.5;
-                const color = getRainbowColor(t + i * 0.2, opacity);
+            ctx.shadowBlur = 20;
+
+            // Uzun, evrilen bir desen: Nefes alan halkalar, dönen parçalara dönüşür.
+            const slowTime = t * 0.2; // Genel evrim hızı
+            const transition = Math.sin(slowTime) * 0.5 + 0.5; // 0 ile 1 arasında yavaşça salınır
+
+            for (let i = 1; i < 6; i++) {
+                const radius = (80 + i * 35) * beatScale;
+                const color = getRainbowColor(t + i * 0.15);
                 ctx.strokeStyle = color;
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 25;
+
+                // Geçişe göre başlangıç ve bitiş açılarını değiştir
+                const startAngle = t * (i % 2 === 0 ? -1 : 1) * 0.5;
+                const arcLength = Math.PI * 1.5 + (Math.PI * 0.5 * transition); // Halka uzunluğu değişir
+                const endAngle = startAngle + arcLength;
+
                 ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
                 ctx.stroke();
             }
         }
@@ -876,13 +1284,23 @@
             const numBars = 40;
             const barWidth = canvas.width / numBars;
             const beatHeight = beat * (canvas.height * 0.3);
+            ctx.shadowBlur = 20;
+
+            // Uzun, evrilen bir desen: İki farklı hızdaki dalganın girişimi.
             for (let i = 0; i < numBars; i++) {
-                const phase = t * 3 + (i / numBars) * Math.PI * 4;
-                const height = (Math.sin(phase) * 0.5 + 0.5) * (canvas.height * 0.5) + beatHeight;
-                const color = getRainbowColor(t + i * 0.05);
+                const ratio = i / numBars;
+                // Yavaş ana dalga
+                const phase1 = t * 2 + ratio * Math.PI * 3;
+                // Hızlı detay dalgası
+                const phase2 = t * 5 + ratio * Math.PI * 8;
+                // Merkezden uzaklığa göre modülasyon
+                const distFromCenter = Math.abs(ratio - 0.5);
+                const centerPulse = Math.cos(t - distFromCenter * 2) * 0.5 + 0.5;
+
+                const height = ((Math.sin(phase1) * 0.6 + Math.sin(phase2) * 0.4) * 0.5 + 0.5) * (canvas.height * 0.4) * centerPulse + beatHeight;
+                const color = getRainbowColor(t + ratio * 0.2);
                 ctx.fillStyle = color;
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 20;
                 ctx.fillRect(i * barWidth, canvas.height - height, barWidth - 2, height);
             }
             drawFadedArtwork();
@@ -892,34 +1310,106 @@
             const barWidth = canvas.width / numBars;
             const centerY = canvas.height / 2;
             const beatHeight = beat * (canvas.height * 0.2);
+            ctx.shadowBlur = 20;
+
+            // Uzun, evrilen bir desen: DNA sarmalı ve "V" şekli arasında yumuşak geçiş.
+            const slowTime = t * 0.3;
+            const transition = Math.cos(slowTime) * 0.5 + 0.5; // 0-1 arası salınım
+
             for (let i = 0; i < numBars; i++) {
-                const phase = t * 2 + (i / numBars) * Math.PI * 6;
-                const height = (Math.sin(phase) * 0.5 + 0.5) * (canvas.height * 0.3) + beatHeight;
-                const color = getRainbowColor(t + i * 0.04);
+                const ratio = i / numBars;
+                const distFromCenter = Math.abs(ratio - 0.5) * 2;
+
+                // DNA sarmalı için Y ofseti
+                const yOffset = Math.cos(ratio * Math.PI * 2 + t * 2) * (canvas.height * 0.15) * (1 - transition);
+                // V şekli için yükseklik modülasyonu
+                const vShape = Math.pow(1 - distFromCenter, 2) * transition;
+
+                const phase = t * 3 + ratio * Math.PI * 5;
+                const height = (Math.sin(phase) * 0.5 + 0.5) * (canvas.height * 0.2 + canvas.height * 0.15 * vShape) + beatHeight;
+                const color = getRainbowColor(t + ratio * 0.1);
                 ctx.fillStyle = color;
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 20;
-                ctx.fillRect(i * barWidth, centerY - height, barWidth - 2, height);
-                ctx.fillRect(i * barWidth, centerY, barWidth - 2, height);
+                ctx.fillRect(i * barWidth, centerY - height + yOffset, barWidth - 2, height);
+                ctx.fillRect(i * barWidth, centerY - yOffset, barWidth - 2, height);
             }
             drawFadedArtwork();
         }
         function drawSimPulsePattern(t, beat) {
             const centerX = canvas.width / 2, centerY = canvas.height / 2;
-            const baseRadius = 100 + Math.sin(t * 4) * 20;
-            const radius = baseRadius + beat * 80;
-            const color = getRainbowColor(t);
+            ctx.lineWidth = 5;
+            ctx.shadowBlur = 25;
+
+            // Ana "pulse" efekti
+            const baseRadius = 120 + Math.sin(t * 2) * 15;
+            const radius = baseRadius + beat * 60;
+            const mainColor = getRainbowColor(t * 0.5);
             ctx.save();
             ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.clip();
-            ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 30;
+            ctx.fillStyle = mainColor; ctx.shadowColor = mainColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             if (recordImg.complete && recordImg.naturalWidth > 0) {
-                ctx.globalAlpha = 0.8;
+                ctx.globalAlpha = 0.7;
                 ctx.drawImage(recordImg, centerX - radius, centerY - radius, radius * 2, radius * 2);
             }
             ctx.restore();
+
+            // Arka planda yavaşça genişleyen halkalar
+            const numRings = 4;
+            for (let i = 0; i < numRings; i++) {
+                const ringRadius = ((t * 20 + i * 100) % 400);
+                const opacity = Math.pow(1 - (ringRadius / 400), 2);
+                if (opacity <= 0) continue;
+                const color = getRainbowColor(t * 0.5 + i * 0.25, opacity);
+                ctx.strokeStyle = color; ctx.shadowColor = color;
+                ctx.beginPath(); ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2); ctx.stroke();
+            }
+
             // DEĞİŞİKLİK: Sakin modda şok dalgası istenmiyor.
             updateAndDrawShockwaves();
+        }
+
+        // --- YENİ: PROFESYONEL ETKİLEŞİM FONKSİYONLARI ---
+        function handleUserActivity(e) {
+            // YENİ: Dokunmatik cihazlarda sinema modunu tamamen devre dışı bırak.
+            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            if (isTouchDevice) {
+                document.body.classList.remove('cinema-mode'); // Eğer açıksa kapat
+                clearTimeout(cinemaModeTimeout); // Zamanlayıcıyı temizle
+                return; // Fonksiyonun geri kalanını çalıştırma
+            }
+
+            // 1. Sinema modunu sıfırla
+            document.body.classList.remove('cinema-mode');
+            clearTimeout(cinemaModeTimeout);
+            cinemaModeTimeout = setTimeout(() => document.body.classList.add('cinema-mode'), cinemaModeDelay);
+            
+            // 2. Fareyi takip eden ışığı güncelle
+            document.body.style.setProperty('--mouse-x', `${(e.clientX / window.innerWidth) * 100}%`);
+            document.body.style.setProperty('--mouse-y', `${(e.clientY / window.innerHeight) * 100}%`);
+        }
+
+        function handleKeyboardShortcuts(e) {
+            // Yazı yazılan bir alanda değilsek kısayolları çalıştır
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            switch(e.code) {
+                case 'Space':
+                    e.preventDefault(); // Sayfanın kaymasını engelle
+                    if (widget) widget.toggle();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (widget) widget.next(); // DÜZELTME: Sonraki şarkıya geç
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (widget) widget.prev(); // DÜZELTME: Önceki şarkıya geç
+                    break;
+                case 'KeyS':
+                    settingsBtn.click();
+                    break;
+            }
         }
 
         // --- RENK YÖNETİMİ ---
@@ -1026,11 +1516,11 @@
                 this.camera.position.z = 5;
                 this.initialized = true;
             },
-            update: function(dataArray, beatIntensity, bassAvg = 0, trebleAvg = 0) {
-                if (!this.initialized || !dataArray) return; 
-                const processedData = processAudioData(dataArray, 64);
+            update: function(dataArray, beatIntensity, bassAvg = 0, trebleAvg = 0) { // DÜZELTME: dataArray null olabilir
+                if (!this.initialized) return; 
                 const style = visualizerStyles[currentStyleIndex].name;
                 const color = new THREE.Color(getRainbowColor(patternTime));
+                const isAnimating = isPlaying || currentMode === 'realtime';
 
                 this.sphereGroup.visible = style === '3d-sphere';
                 this.orbGroup.visible = style === '3d-orb';
@@ -1041,17 +1531,20 @@
                     const positions = sphere.geometry.attributes.position;
                     const basePositions = sphere.geometry.attributes.basePosition;
                     
-                    // DÜZELTME: Küre deformasyon mantığını ilk, düzgün çalışan haline geri getir.
-                    for (let i = 0; i < positions.count; i++) {
-                        const base_x = basePositions.getX(i);
-                        const base_y = basePositions.getY(i); 
-                        const base_z = basePositions.getZ(i);
-                        // DÜZELTME: Yapay destek olmadan, sadece gerçek ses verisine tepki ver
-                        const rawValue = processedData[i % processedData.length];
-                        const dynamicValue = Math.pow(rawValue, 0.9); // Sadece dinamik sıkıştırma kullan
-                        const offset = (dynamicValue / 255) * 0.25 * (1 + beatIntensity);
-                        positions.setXYZ(i, base_x * (1 + offset), base_y * (1 + offset), base_z * (1 + offset));
-                    } 
+                    if (isAnimating && dataArray) {
+                        const processedData = processAudioData(dataArray, 64);
+                        for (let i = 0; i < positions.count; i++) {
+                            const base_x = basePositions.getX(i);
+                            const base_y = basePositions.getY(i); 
+                            const base_z = basePositions.getZ(i);
+                            const rawValue = processedData[i % processedData.length];
+                            const dynamicValue = Math.pow(rawValue, 0.9);
+                            const offset = (dynamicValue / 255) * 0.25 * (1 + beatIntensity);
+                            positions.setXYZ(i, base_x * (1 + offset), base_y * (1 + offset), base_z * (1 + offset));
+                        }
+                    } else {
+                        positions.copy(basePositions); // DÜZELTME: Müzik yoksa orijinal pürüzsüz haline döndür
+                    }
                     positions.needsUpdate = true;
                     sphere.geometry.computeVertexNormals();
                     sphere.material.color.lerp(color, 0.1);
@@ -1063,29 +1556,31 @@
                     const positions = orb.geometry.attributes.position;
                     const basePositions = orb.geometry.attributes.basePosition.array;
                     const newPositions = new Float32Array(basePositions); // Her karede yeni bir dizi oluştur
+                    
+                    if (isAnimating) {
+                        // Deprem Dalgalanması Efekti
+                        for (let i = 0; i < positions.count; i++) {
+                            const base_x = basePositions[i * 3];
+                            const base_y = basePositions[i * 3 + 1];
+                            const base_z = basePositions[i * 3 + 2];
 
-                    // Deprem Dalgalanması Efekti
-                    for (let i = 0; i < positions.count; i++) {
-                        const base_x = basePositions[i * 3];
-                        const base_y = basePositions[i * 3 + 1];
-                        const base_z = basePositions[i * 3 + 2];
+                            // Ana "deprem" dalgası (Bastan etkilenir)
+                            const bassWave = Math.sin(base_x * 5 + patternTime * 4) * Math.cos(base_y * 5 + patternTime * 2);
+                            
+                            // Yüzeydeki hızlı "titreşimler" (Tizden etkilenir)
+                            const trebleWave = Math.sin(base_y * 25 + patternTime * 20) * Math.cos(base_z * 25 + patternTime * 15);
+                            const waveFactor = bassWave + (trebleWave * (trebleAvg / 255) * 0.5);
+                            const amplitude = (bassAvg / 255) * 0.08 + beatIntensity * 0.15;
+                            const waveOffset = 1.0 + waveFactor * amplitude;
 
-                        // Ana "deprem" dalgası (Bastan etkilenir)
-                        const bassWave = Math.sin(base_x * 5 + patternTime * 4) * Math.cos(base_y * 5 + patternTime * 2);
-                        
-                        // Yüzeydeki hızlı "titreşimler" (Tizden etkilenir)
-                        const trebleWave = Math.sin(base_y * 25 + patternTime * 20) * Math.cos(base_z * 25 + patternTime * 15);
-                        const waveFactor = bassWave + (trebleWave * (trebleAvg / 255) * 0.5);
-                        const amplitude = (bassAvg / 255) * 0.08 + beatIntensity * 0.15;
-                        const waveOffset = 1.0 + waveFactor * amplitude;
-
-                        newPositions[i * 3] = base_x * waveOffset;
-                        newPositions[i * 3 + 1] = base_y * waveOffset;
-                        newPositions[i * 3 + 2] = base_z * waveOffset;
+                            newPositions[i * 3] = base_x * waveOffset;
+                            newPositions[i * 3 + 1] = base_y * waveOffset;
+                            newPositions[i * 3 + 2] = base_z * waveOffset;
+                        }
                     }
                     
-                    // DÜZELTME: Hesaplanmış yeni pozisyonları geometriye ata. Bu en güvenilir yöntemdir.
-                    positions.set(newPositions);
+                    // DÜZELTME: Müzik varsa hesaplanmış, yoksa orijinal pozisyonları ata.
+                    positions.set(isAnimating ? newPositions : basePositions);
                     positions.needsUpdate = true;
                     orb.geometry.computeVertexNormals();
 
@@ -1113,13 +1608,13 @@
             const step = 50;
             const centerX = gridCanvas.width / 2;
             const horizonY = gridCanvas.height * 0.4;
-            const beatGlow = beatIntensity * 200;
+            const beatGlow = 0; // DÜZELTME: Grid parlamasını tamamen kaldır.
 
             // Grid rengini ana paletten al
             const gridColor = `rgb(${currentPalette[0][0]}, ${currentPalette[0][1]}, ${currentPalette[0][2]})`;
 
             gCtx.strokeStyle = `rgba(${currentPalette[0].join(',')}, 0.2)`;
-            gCtx.shadowColor = `rgba(${currentPalette[0].join(',')}, 0.5)`; // DÜZELTME: Parlama renginin opaklığını azalt
+            gCtx.shadowColor = `rgba(0,0,0,0)`; // DÜZELTME: Parlama rengini görünmez yap.
             gCtx.shadowBlur = beatGlow;
 
             // Yatay çizgiler
@@ -1205,7 +1700,8 @@
                                + ((particlesArray[a].y - particlesArray[b].y) * (particlesArray[a].y - particlesArray[b].y));
                     if (distance < (particleCanvas.width/7) * (particleCanvas.height/7)) {
                         opacityValue = 1 - (distance/20000);
-                        pCtx.strokeStyle = `rgba(213, 0, 249, ${opacityValue * 0.2})`; // DÜZELTME: Parçacık bağlantı opaklığını azalt
+                        // DÜZELTME: Müzik çalmadığında da hafifçe görünür olmasını sağla, çalarken belirginleşsin.
+                        pCtx.strokeStyle = `rgba(213, 0, 249, ${opacityValue * (0.02 + beatIntensity * 0.08)})`;
                         pCtx.lineWidth = 1;
                         pCtx.beginPath();
                         pCtx.moveTo(particlesArray[a].x, particlesArray[a].y);
@@ -1242,6 +1738,17 @@
         
         // --- BAŞLANGIÇ ---
         mainLoop(); // ANA ANİMASYON DÖNGÜSÜNÜ HEMEN BAŞLAT
+        loadSettings(); // YENİ: Kaydedilmiş ayarları yükle
+
+        // YENİ: Dokunmatik cihazlarda canlı senkronizasyon butonunu gizle.
+        // Bu özellik mobil cihazlarda desteklenmediği için butonu kaldırıyoruz.
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        if (isTouchDevice) {
+            document.querySelector('.controls-wrapper').style.display = 'none';
+        }
+
+        iframeElement = document.getElementById('sc-frame'); // İlk iframe referansını al
+        iframeElement.onload = initializeWidget; // İlk yükleme için onload olayını ata
         initializeWidget();
 
         // Giriş animasyonunun akıcı olması için parçacık motorunu hafif bir gecikmeyle başlat.
@@ -1253,8 +1760,24 @@
                 setTimeout(() => shootingStars.push(new ShootingStar()), i * 1500); // Farklı zamanlarda başlasınlar
             }
             resizeCanvas(); // Her şeyin doğru boyutlarda olduğundan emin ol
+            // YENİ: Sinema modunu ilk başta başlat
+            handleUserActivity({clientX: window.innerWidth / 2, clientY: window.innerHeight / 2});
             // animateParticles(); // Ana döngü zaten çalıştırıyor
         }, 500); // 500 milisaniye (yarım saniye) gecikme
+    </script>
+    <script>
+        // YENİ: Yükleme ekranı metinleri
+        const loadingTexts = [
+            "Frekanslar ayarlanıyor...", "Parçacıklar birleştiriliyor...", "Cam parlatılıyor...",
+            "Renk paletleri oluşturuluyor...", "Boyutlar arası geçit açılıyor...", "Ritme kilitleniliyor..."
+        ];
+        const loadingTextElement = document.getElementById('loading-text');
+        let textInterval = setInterval(() => {
+            const randomIndex = Math.floor(Math.random() * loadingTexts.length);
+            loadingTextElement.textContent = loadingTexts[randomIndex];
+        }, 1500);
+        // Yükleme bitince interval'i durdur
+        window.addEventListener('load', () => clearInterval(textInterval));
     </script>
 </body>
 </html>
